@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-lexend);
+  --font-serif: var(--font-lora);
+}
+
+body {
+  font-family: var(--font-lexend), sans-serif; /* Энд 'font-sans' биш шууд variable-ийг нь зааж өгөөд үзээрэй */
+}
+
+h1, h2, h3, .hero-title {
+  font-family: var(--font-lora), serif;
+}

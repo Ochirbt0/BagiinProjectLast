@@ -1,0 +1,29 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+
+model UserProgress {
+  id        String   @id @default(cuid())
+  userId    String
+  grade     Int      
+  level     String   
+  topicId   Int      
+  completed Boolean  @default(false)
+
+ 
+  @@unique([userId, grade, level, topicId])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  avatarUrl String?
+  score     Int      @default(0)
+  createdAt DateTime @default(now())
+}
