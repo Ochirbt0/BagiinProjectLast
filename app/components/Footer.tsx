@@ -5,8 +5,8 @@ import Link from "next/link";
 
 const Footer = () => {
   return (
-    <footer className="w-full bg-[#5D3191] text-white py-10 font-sans border-t-4 border-[#4a2775]">
-      <div className="container mx-auto px-6 max-w-[1200px]">
+    <footer className="w-full bg-[#5D3191] text-white p-10 font-sans  border-[#4a2775]">
+      <div className="container mx-auto px-6 max-w-[1500px] md:p-0">
         <div className="flex flex-col md:flex-row md:justify-between gap-10 md:gap-0">
           <div className="md:w-[45%] space-y-6">
             <div className="flex items-center gap-4 group justify-start">
