@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Lock, Trophy, Zap } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 
 const HERO_RANKS = [
   {
@@ -57,19 +58,111 @@ const HERO_RANKS = [
   },
 ];
 
+type SelectedHero = {
+  id: number;
+  name: string;
+  src: string;
+  type: string;
+};
+
 export default function BaatarPage() {
   const router = useRouter();
+  const { user, isLoaded } = useUser();
   const [userStars, setUserStars] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [heroesLockedMap, setHeroesLockedMap] = useState<Record<number, boolean>>(
+    {},
+  );
+  const [heroesMetaMap, setHeroesMetaMap] = useState<
+    Record<number, { name?: string; image?: string }>
+  >({});
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedStars = localStorage.getItem("userStars") || "0";
-    setUserStars(parseInt(savedStars));
-  }, []);
+    const hydrateHeroes = async () => {
+      if (!isLoaded) return;
 
-  const handleSelectHero = (hero: any, isLocked: boolean) => {
+      const fallbackStars = Number(localStorage.getItem("userStars") || "0");
+      setUserStars(Number.isFinite(fallbackStars) ? fallbackStars : 0);
+
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setLoadError(null);
+
+        const [personalStarsRes, unlockHeroesRes] = await Promise.all([
+          fetch(`/api/personal-stars?userId=${user.id}`),
+          fetch(`/api/unlock-heroes?userId=${user.id}`),
+        ]);
+
+        if (personalStarsRes.ok) {
+          const personalStarsData = (await personalStarsRes.json()) as {
+            score?: number;
+          };
+          const currentStars = Number(personalStarsData?.score ?? 0);
+          setUserStars(currentStars);
+          localStorage.setItem("userStars", String(currentStars));
+        }
+
+        if (unlockHeroesRes.ok) {
+          const unlockData = (await unlockHeroesRes.json()) as {
+            userStars?: number;
+            heroes?: Array<{
+              id: number;
+              name: string;
+              image: string;
+              isLocked: boolean;
+            }>;
+          };
+
+          if (typeof unlockData.userStars === "number") {
+            setUserStars(unlockData.userStars);
+            localStorage.setItem("userStars", String(unlockData.userStars));
+          }
+
+          const nextLockedMap: Record<number, boolean> = {};
+          const nextMetaMap: Record<number, { name?: string; image?: string }> =
+            {};
+
+          for (const hero of unlockData.heroes || []) {
+            nextLockedMap[hero.id] = Boolean(hero.isLocked);
+            nextMetaMap[hero.id] = {
+              name: hero.name,
+              image: hero.image,
+            };
+          }
+
+          setHeroesLockedMap(nextLockedMap);
+          setHeroesMetaMap(nextMetaMap);
+        } else {
+          setLoadError("Баатрын мэдээлэл ачаалахад асуудал гарлаа.");
+        }
+      } catch {
+        setLoadError("Баатрын мэдээлэл ачаалахад асуудал гарлаа.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    hydrateHeroes();
+  }, [isLoaded, user?.id]);
+
+  const handleSelectHero = async (hero: SelectedHero, isLocked: boolean) => {
     if (isLocked) return;
     localStorage.setItem("selectedHero", JSON.stringify(hero));
     window.dispatchEvent(new Event("storage"));
+    try {
+      await fetch("/api/select-hero", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hero }),
+      });
+    } catch {
+      // ignore network errors; local avatar still selected
+    }
     router.push("/");
   };
 
@@ -126,7 +219,14 @@ export default function BaatarPage() {
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-10">
-                  {rank.heroes.map((hero, index) => (
+                  {rank.heroes.map((hero, index) => {
+                    const apiHero = heroesMetaMap[hero.id];
+                    const heroName = apiHero?.name || hero.name;
+                    const heroSrc = apiHero?.image || hero.src;
+                    const isHeroLocked =
+                      heroesLockedMap[hero.id] ?? isRankLocked;
+
+                    return (
                     <motion.div
                       key={hero.id}
                       initial={{ opacity: 0, scale: 0.95 }}
@@ -135,11 +235,20 @@ export default function BaatarPage() {
                       transition={{ delay: index * 0.05 }}
                     >
                       <div
-                        onClick={() => handleSelectHero(hero, isRankLocked)}
+                        onClick={() =>
+                          handleSelectHero(
+                            {
+                              ...hero,
+                              name: heroName,
+                              src: heroSrc,
+                            },
+                            isHeroLocked,
+                          )
+                        }
                         className={`
                           relative bg-white rounded-[30px] md:rounded-[40px] p-4 md:p-8 border-2 md:border-4 transition-all duration-500 group overflow-hidden
                           ${
-                            isRankLocked
+                            isHeroLocked
                               ? "border-gray-50 opacity-40 grayscale cursor-not-allowed shadow-none"
                               : "border-transparent hover:border-[#8DC63F] shadow-[0_10px_30px_rgba(93,49,145,0.06)] cursor-pointer hover:-translate-y-2"
                           }
@@ -147,37 +256,52 @@ export default function BaatarPage() {
                       >
                         <div className="relative aspect-square w-full mb-4 md:mb-6">
                           <Image
-                            src={hero.src}
-                            alt={hero.name}
+                            src={heroSrc}
+                            alt={heroName}
                             fill
                             sizes="(max-width: 768px) 40vw, 20vw"
-                            className={`object-contain transition-transform duration-700 ${!isRankLocked && "group-hover:scale-110"}`}
+                            className={`object-contain transition-transform duration-700 ${!isHeroLocked && "group-hover:scale-110"}`}
                           />
                         </div>
 
                         <div className="text-center relative z-10">
                           <h3
-                            className={`font-black text-[9px] md:text-xs uppercase mb-3 md:mb-4 tracking-wider truncate ${isRankLocked ? "text-gray-400" : "text-[#5D3191]"}`}
+                            className={`font-black text-[9px] md:text-xs uppercase mb-3 md:mb-4 tracking-wider truncate ${isHeroLocked ? "text-gray-400" : "text-[#5D3191]"}`}
                           >
-                            {hero.name}
+                            {heroName}
                           </h3>
                           <button
                             className={`
                             w-full py-2 md:py-3 rounded-xl md:rounded-2xl text-[8px] md:text-[9px] font-black uppercase transition-all
-                            ${isRankLocked ? "bg-gray-100 text-gray-300" : "bg-[#5D3191] group-hover:bg-[#8DC63F] text-white"}
+                            ${isHeroLocked ? "bg-gray-100 text-gray-300" : "bg-[#5D3191] group-hover:bg-[#8DC63F] text-white"}
                           `}
                           >
-                            {isRankLocked ? "Locked" : "Сонгох"}
+                            {isHeroLocked ? "Locked" : "Сонгох"}
                           </button>
                         </div>
                       </div>
                     </motion.div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
           })}
         </div>
+        {(isLoading || loadError) && (
+          <div className="mt-8 text-center">
+            {isLoading ? (
+              <p className="text-xs font-black uppercase tracking-widest text-[#5D3191]/60">
+                Баатрын жагсаалт ачаалж байна...
+              </p>
+            ) : null}
+            {!isLoading && loadError ? (
+              <p className="text-xs font-black uppercase tracking-widest text-red-400">
+                {loadError}
+              </p>
+            ) : null}
+          </div>
+        )}
       </main>
 
       <div className="fixed -top-20 -right-20 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-purple-50 rounded-full blur-[100px] md:blur-[120px] opacity-30 -z-10" />

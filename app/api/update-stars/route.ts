@@ -33,17 +33,28 @@ export async function POST(req: Request) {
       },
     });
 
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { avatarUrl: true },
+    });
+    const shouldKeepSelectedHero =
+      typeof existingUser?.avatarUrl === "string" &&
+      existingUser.avatarUrl.startsWith("/");
+    const resolvedAvatar = shouldKeepSelectedHero
+      ? existingUser?.avatarUrl
+      : (updatedUser.imageUrl ?? null);
+
     await prisma.user.upsert({
       where: { id: userId },
       create: {
         id: userId,
         name: normalizedNickname || updatedUser.firstName || "Баатар",
-        avatarUrl: updatedUser.imageUrl || null,
+        avatarUrl: resolvedAvatar,
         score: 0,
       },
       update: {
         name: normalizedNickname || updatedUser.firstName || "Баатар",
-        avatarUrl: updatedUser.imageUrl || null,
+        avatarUrl: resolvedAvatar,
       },
     });
  

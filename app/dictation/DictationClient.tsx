@@ -11,6 +11,7 @@ import {
   X,
   Delete,
   Lightbulb,
+  CheckCircle2,
 } from "lucide-react";
 import {
   completeTopicProgress,
@@ -31,6 +32,7 @@ export default function DictationClient() {
   const router = useRouter();
   const topicTitle = searchParams.get("topic") || "Амьтдын ертөнц";
   const topicId = Number(searchParams.get("topicId") || "1");
+  const levelParam = searchParams.get("level") || "1";
 
   const grade = Number(searchParams.get("grade") || "1");
   const level = levelFromQuery(searchParams.get("level"));
@@ -45,13 +47,22 @@ export default function DictationClient() {
   const [error, setError] = useState<string | null>(null);
   const [isTopicPassed, setIsTopicPassed] = useState(false);
   const [showAnagram, setShowAnagram] = useState(false);
+  const [selectedAnagramWord, setSelectedAnagramWord] = useState<string | null>(
+    null,
+  );
   const [anagramWords, setAnagramWords] = useState<string[]>([]);
   const [anagramShuffled, setAnagramShuffled] = useState<
     Record<string, string>
   >({});
-  const [anagramInputs, setAnagramInputs] = useState<Record<string, string>>(
-    {},
-  );
+  const [anagramBoards, setAnagramBoards] = useState<
+    Record<string, { pool: string[]; slots: Array<string | null> }>
+  >({});
+  const [draggingLetter, setDraggingLetter] = useState<{
+    word: string;
+    source: "pool" | "slot";
+    index: number;
+    letter: string;
+  } | null>(null);
   const [anagramError, setAnagramError] = useState<string | null>(null);
   const [result, setResult] = useState<{
     score?: number;
@@ -60,6 +71,12 @@ export default function DictationClient() {
     correctedText?: string;
     totalScore?: number;
   } | null>(null);
+  const [reviewWords, setReviewWords] = useState<
+    Array<{ value: string; isWrong: boolean; targetWord?: string }>
+  >([]);
+  const [requireAnagramHint, setRequireAnagramHint] = useState<string | null>(
+    null,
+  );
   const expectedLineCount = sourceSentences.length || 5;
 
   const normalizeWord = (value: string) =>
@@ -86,6 +103,11 @@ export default function DictationClient() {
     return shuffled === word ? word.split("").reverse().join("") : shuffled;
   };
 
+  const isWordSolved = (
+    word: string,
+    boards: Record<string, { pool: string[]; slots: Array<string | null> }>,
+  ) => normalizeWord((boards[word]?.slots || []).join("")) === word;
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -102,10 +124,14 @@ export default function DictationClient() {
       setSourceSentences([]);
       setIsTopicPassed(false);
       setShowAnagram(false);
+      setSelectedAnagramWord(null);
       setAnagramWords([]);
       setAnagramShuffled({});
-      setAnagramInputs({});
+      setAnagramBoards({});
+      setDraggingLetter(null);
       setAnagramError(null);
+      setReviewWords([]);
+      setRequireAnagramHint(null);
 
       try {
         const data = await generateTopic({
@@ -205,6 +231,25 @@ export default function DictationClient() {
   };
 
   const handleSubmit = async () => {
+    if (isTopicPassed) {
+      router.push(
+        `/topics?grade=${encodeURIComponent(String(grade))}&level=${encodeURIComponent(levelParam)}`,
+      );
+      return;
+    }
+
+    if (result && anagramWords.length > 0) {
+      const unresolved = anagramWords.filter(
+        (word) => !isWordSolved(word, anagramBoards),
+      );
+      if (unresolved.length > 0) {
+        setRequireAnagramHint(
+          "Сайн байна. Одоо улаан үг дээр дарж үсгийн тоглоомоо гүйцээгээрэй.",
+        );
+        return;
+      }
+    }
+
     if (!userInput.trim()) {
       setError("Эхлээд өгүүлбэрээ бичнэ үү.");
       return;
@@ -223,6 +268,7 @@ export default function DictationClient() {
 
     setIsChecking(true);
     setError(null);
+    setRequireAnagramHint(null);
 
     try {
       const checked = await spellcheck(userInput);
@@ -239,49 +285,82 @@ export default function DictationClient() {
         correctedText: checked.correctedText,
         totalScore: scoreData.totalScore,
       });
+      if (typeof scoreData.leaderboardScore === "number") {
+        localStorage.setItem("userStars", String(scoreData.leaderboardScore));
+        window.dispatchEvent(new Event("stars-updated"));
+      }
 
       const originalWords = sourceSentences
         .join(" ")
         .split(/\s+/)
+        .map((w) => String(w || "").trim())
+        .filter(Boolean);
+      const originalWordsNormalized = originalWords
         .map((w) => normalizeWord(w))
         .filter(Boolean);
-      const userWords = userInput
+      const userWordsRaw = userInput
         .split(/\s+/)
+        .map((w) => String(w || "").trim())
+        .filter(Boolean);
+      const userWordsNormalized = userWordsRaw
         .map((w) => normalizeWord(w))
         .filter(Boolean);
 
       const correctWordsForAnagram: string[] = [];
-      const maxLength = Math.max(originalWords.length, userWords.length);
+      const review: Array<{ value: string; isWrong: boolean; targetWord?: string }> =
+        [];
+      const maxLength = Math.max(
+        originalWordsNormalized.length,
+        userWordsNormalized.length,
+      );
       for (let i = 0; i < maxLength; i++) {
-        const expected = originalWords[i];
-        const actual = userWords[i];
+        const expected = originalWordsNormalized[i];
+        const actual = userWordsNormalized[i];
+        const rawActual = userWordsRaw[i];
         if (expected && expected !== actual) {
           correctWordsForAnagram.push(expected);
         }
+        if (rawActual) {
+          const isWrong = Boolean(expected && expected !== actual);
+          review.push({
+            value: rawActual,
+            isWrong,
+            targetWord: isWrong ? expected : undefined,
+          });
+        }
       }
+      setReviewWords(review);
+
       const uniqueIncorrect = Array.from(new Set(correctWordsForAnagram));
 
       if (uniqueIncorrect.length > 0) {
+        const shuffledMap = uniqueIncorrect.reduce(
+          (acc, word) => {
+            acc[word] = shuffleWord(word);
+            return acc;
+          },
+          {} as Record<string, string>,
+        );
+
         setAnagramWords(uniqueIncorrect);
-        setAnagramShuffled(
+        setAnagramShuffled(shuffledMap);
+        setAnagramBoards(
           uniqueIncorrect.reduce(
             (acc, word) => {
-              acc[word] = shuffleWord(word);
+              acc[word] = {
+                pool: (shuffledMap[word] || word).split(""),
+                slots: Array.from({ length: word.length }, () => null),
+              };
               return acc;
             },
-            {} as Record<string, string>,
+            {} as Record<string, { pool: string[]; slots: Array<string | null> }>,
           ),
         );
-        setAnagramInputs(
-          uniqueIncorrect.reduce(
-            (acc, word) => {
-              acc[word] = "";
-              return acc;
-            },
-            {} as Record<string, string>,
-          ),
+        setShowAnagram(false);
+        setSelectedAnagramWord(null);
+        setRequireAnagramHint(
+          "Улаанаар тэмдэглэсэн үгэн дээр дарж үсгийн тоглоомоо хийгээрэй.",
         );
-        setShowAnagram(true);
       } else {
         await completeTopicProgress({
           grade: Number.isFinite(grade) ? grade : 1,
@@ -289,6 +368,7 @@ export default function DictationClient() {
           topicId: Number.isFinite(topicId) ? topicId : 1,
         });
         setIsTopicPassed(true);
+        setRequireAnagramHint(null);
       }
     } catch (e) {
       console.error(e);
@@ -316,13 +396,32 @@ export default function DictationClient() {
   };
 
   const handleAnagramCheck = async () => {
-    const allCorrect = anagramWords.every((word) => {
-      const input = normalizeWord(anagramInputs[word] || "");
+    const wordsToCheck = selectedAnagramWord
+      ? [selectedAnagramWord]
+      : anagramWords;
+
+    const checkedWordsCorrect = wordsToCheck.every((word) => {
+      const board = anagramBoards[word];
+      const input = normalizeWord((board?.slots || []).join(""));
       return input === word;
     });
 
-    if (!allCorrect) {
+    if (!checkedWordsCorrect) {
       setAnagramError("Бүх анаграм үгийг зөв тааруулж бичнэ үү.");
+      return;
+    }
+
+    const allWordsSolved = anagramWords.every((word) =>
+      isWordSolved(word, anagramBoards),
+    );
+
+    if (!allWordsSolved) {
+      setShowAnagram(false);
+      setSelectedAnagramWord(null);
+      setAnagramError(null);
+      setRequireAnagramHint(
+        "Гоё байна. Үлдсэн улаан үг дээр дараад үргэлжлүүлээрэй.",
+      );
       return;
     }
 
@@ -334,12 +433,103 @@ export default function DictationClient() {
       });
       setIsTopicPassed(true);
       setShowAnagram(false);
+      setSelectedAnagramWord(null);
       setAnagramError(null);
+      setRequireAnagramHint(null);
     } catch (e) {
       console.error(e);
       setAnagramError("Ахиц хадгалахад алдаа гарлаа. Дахин оролдоно уу.");
     }
   };
+
+  const placeLetterToSlot = (
+    word: string,
+    slotIndex: number,
+    source: { source: "pool" | "slot"; index: number; letter: string },
+  ) => {
+    setAnagramBoards((prev) => {
+      const board = prev[word];
+      if (!board) return prev;
+
+      const nextPool = [...board.pool];
+      const nextSlots = [...board.slots];
+
+      if (source.source === "pool") {
+        if (!nextPool[source.index]) return prev;
+        nextPool.splice(source.index, 1);
+      } else {
+        if (nextSlots[source.index] !== source.letter) return prev;
+        nextSlots[source.index] = null;
+      }
+
+      const replaced = nextSlots[slotIndex];
+      if (replaced) {
+        nextPool.push(replaced);
+      }
+      nextSlots[slotIndex] = source.letter;
+
+      return {
+        ...prev,
+        [word]: { pool: nextPool, slots: nextSlots },
+      };
+    });
+    setAnagramError(null);
+  };
+
+  const moveLetterBackToPool = (word: string, slotIndex: number) => {
+    setAnagramBoards((prev) => {
+      const board = prev[word];
+      if (!board) return prev;
+
+      const nextPool = [...board.pool];
+      const nextSlots = [...board.slots];
+      const letter = nextSlots[slotIndex];
+      if (!letter) return prev;
+
+      nextSlots[slotIndex] = null;
+      nextPool.push(letter);
+
+      return {
+        ...prev,
+        [word]: { pool: nextPool, slots: nextSlots },
+      };
+    });
+    setAnagramError(null);
+  };
+
+  const handlePoolQuickPlace = (word: string, poolIndex: number) => {
+    const board = anagramBoards[word];
+    if (!board) return;
+    const firstEmptySlot = board.slots.findIndex((slot) => !slot);
+    if (firstEmptySlot === -1) return;
+    const letter = board.pool[poolIndex];
+    if (!letter) return;
+
+    placeLetterToSlot(word, firstEmptySlot, {
+      source: "pool",
+      index: poolIndex,
+      letter,
+    });
+  };
+
+  const openAnagramByWord = (word?: string) => {
+    if (!word) return;
+    if (!anagramWords.includes(word)) return;
+    if (isWordSolved(word, anagramBoards)) {
+      setRequireAnagramHint("Энэ үгийг аль хэдийн зөв болгочихсон байна.");
+      return;
+    }
+
+    setRequireAnagramHint(null);
+    setSelectedAnagramWord(word);
+    setAnagramError(null);
+    setShowAnagram(true);
+  };
+
+  const anagramWordsToRender =
+    selectedAnagramWord && anagramWords.includes(selectedAnagramWord)
+      ? [selectedAnagramWord]
+      : anagramWords;
 
   return (
     <div className="min-h-screen bg-[#FDFCFE] flex flex-col items-center font-sans overflow-x-hidden">
@@ -413,6 +603,46 @@ export default function DictationClient() {
                 className="relative w-full h-full p-8 pl-16 bg-transparent text-base md:text-xl font-bold text-slate-700 focus:outline-none resize-none leading-[40px] z-20 overflow-y-auto"
               />
             </div>
+
+            {reviewWords.some((word) => word.isWrong) && !isTopicPassed && (
+              <div className="mt-4 p-4 rounded-2xl border border-rose-100 bg-rose-50/60">
+                <p className="text-[11px] font-black uppercase tracking-widest text-rose-500 mb-2">
+                  Алдаатай үгс
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {reviewWords.map((word, idx) => {
+                    if (!word.isWrong) {
+                      return (
+                        <span
+                          key={`${word.value}-${idx}`}
+                          className="px-3 py-1.5 rounded-full bg-white/80 border border-slate-100 text-slate-400 font-bold text-sm"
+                        >
+                          {word.value}
+                        </span>
+                      );
+                    }
+
+                    const solved = word.targetWord
+                      ? isWordSolved(word.targetWord, anagramBoards)
+                      : false;
+
+                    return (
+                      <button
+                        key={`${word.value}-${idx}`}
+                        onClick={() => openAnagramByWord(word.targetWord)}
+                        className={`px-3 py-1.5 rounded-full border font-black text-sm transition-colors ${
+                          solved
+                            ? "bg-green-50 border-green-200 text-green-600 hover:bg-green-100"
+                            : "bg-white border-rose-200 text-rose-500 hover:bg-rose-100"
+                        }`}
+                      >
+                        {solved ? word.targetWord || word.value : word.value}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="px-6 md:px-12 py-8 flex items-center justify-end gap-3">
@@ -433,24 +663,30 @@ export default function DictationClient() {
               disabled={isChecking || isGenerating}
               className="w-full md:w-48 bg-[#5D3191] text-white py-4 rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-3 transition-all disabled:opacity-60"
             >
-              <Send size={18} />
-              {isChecking ? "ШАЛГАЖ БАЙНА" : "ИЛГЭЭХ"}
+              {isTopicPassed ? <ChevronLeft size={18} /> : <Send size={18} />}
+              {isTopicPassed
+                ? "БУЦАХ"
+                : isChecking
+                  ? "ШАЛГАЖ БАЙНА"
+                  : "ИЛГЭЭХ"}
             </motion.button>
           </div>
         </div>
 
-        <div className="mt-6 bg-amber-50/50 border border-amber-100 rounded-[25px] p-6 flex gap-4 items-start">
-          <div className="w-10 h-10 bg-amber-400 rounded-xl flex items-center justify-center shrink-0">
-            <Lightbulb size={20} className="text-white" />
+        <div className="mt-7 bg-gradient-to-br from-[#FFF7E6] via-[#F7F2FF] to-[#ECF9DF] border border-[#E7D8F7] rounded-[32px] p-6 md:p-8 flex gap-4 md:gap-5 items-start shadow-[0_20px_55px_rgba(93,49,145,0.10)]">
+          <div className="w-12 h-12 md:w-14 md:h-14 bg-[#FFD93D] rounded-2xl flex items-center justify-center shrink-0 shadow-[0_8px_20px_rgba(255,217,61,0.35)]">
+            <Lightbulb size={24} className="text-white" />
           </div>
-          <div>
-            <h4 className="text-amber-700 font-black text-[10px] uppercase tracking-widest">
+          <div className="flex-1">
+            <h4 className="text-[#5D3191] font-black text-xs md:text-sm uppercase tracking-widest">
               Үр дүн
             </h4>
             {error ? (
-              <p className="text-red-500 text-sm font-bold mt-1">{error}</p>
+              <p className="text-red-500 text-base md:text-lg font-black mt-2">
+                {error}
+              </p>
             ) : result ? (
-              <div className="text-amber-800/80 text-sm font-bold mt-1 leading-tight">
+              <div className="text-[#5D3191] text-base md:text-lg font-black mt-2 leading-tight space-y-1">
                 {typeof result.score === "number" && (
                   <p>Оноо: {result.score}</p>
                 )}
@@ -467,6 +703,11 @@ export default function DictationClient() {
                     Статус: Анаграм даалгавар дутуу.
                   </p>
                 )}
+                {requireAnagramHint && (
+                  <p className="text-rose-500 text-sm md:text-base">
+                    {requireAnagramHint}
+                  </p>
+                )}
                 {result.incorrectWords && result.incorrectWords.length > 0 && (
                   <p>Алдаатай үг: {result.incorrectWords.join(", ")}</p>
                 )}
@@ -475,7 +716,7 @@ export default function DictationClient() {
                 )}
               </div>
             ) : (
-              <p className="text-amber-800/70 text-sm font-bold mt-1 leading-tight text-pretty">
+              <p className="text-[#5D3191]/80 text-base md:text-lg font-black mt-2 leading-tight text-pretty">
                 Сонсоод бичсэнийхээ дараа ИЛГЭЭХ дарж шалгуулна уу.
               </p>
             )}
@@ -541,40 +782,133 @@ export default function DictationClient() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl border border-purple-100"
+              className="w-full max-w-2xl rounded-[32px] bg-[#FDFCFE] p-5 md:p-6 shadow-2xl border border-purple-100"
             >
               <h3 className="text-[#5D3191] text-xl font-black mb-2">
                 Анаграм засвар
               </h3>
               <p className="text-slate-500 text-sm font-bold mb-4">
-                Алдаатай үг бүрийг зөв тааруулж бичсэний дараа энэ сэдэв давсанд
-                тооцогдоно.
+                Үсгүүдийг чирж эсвэл дарж зөв үгээ бүрдүүлээрэй.
               </p>
 
-              <div className="space-y-3 max-h-[45vh] overflow-auto pr-1">
-                {anagramWords.map((word) => {
+              <div className="space-y-5 max-h-[58vh] overflow-auto pr-1">
+                {anagramWordsToRender.map((word) => {
+                  const board = anagramBoards[word] || {
+                    pool: [],
+                    slots: [],
+                  };
+                  const solved = isWordSolved(word, anagramBoards);
+
                   return (
                     <div
                       key={word}
-                      className="p-3 rounded-2xl border border-slate-100 bg-slate-50/60"
+                      className="p-4 rounded-[26px] border border-purple-100 bg-white"
                     >
-                      <p className="text-xs text-slate-500 font-black mb-1">
-                        Анаграм
-                      </p>
-                      <p className="text-lg font-black text-[#5D3191] mb-2">
-                        {anagramShuffled[word] || word}
-                      </p>
-                      <input
-                        value={anagramInputs[word] || ""}
-                        onChange={(e) =>
-                          setAnagramInputs((prev) => ({
-                            ...prev,
-                            [word]: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 font-bold text-[#5D3191] outline-none focus:border-[#5D3191]"
-                        placeholder="Зөв үгийг бич"
-                      />
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <p className="text-xs font-black uppercase tracking-widest text-[#5D3191]/60">
+                          Даалгавар
+                        </p>
+                        {solved && (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-widest">
+                            <CheckCircle2 size={13} />
+                            Боллоо
+                          </div>
+                        )}
+                      </div>
+                      <div className="rounded-2xl overflow-hidden border-2 border-[#D3BFEF] mb-4">
+                        <div className="bg-[#EAF7DA] px-4 py-2 border-b border-[#D3BFEF]">
+                          <p className="text-[10px] text-[#5D3191] font-black uppercase tracking-widest text-center">
+                            HINT
+                          </p>
+                        </div>
+                        <div className="px-4 py-5">
+                          <p className="text-center text-[#5D3191] text-xl md:text-2xl font-black tracking-wide">
+                            {anagramShuffled[word] || word}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div
+                        className="flex flex-wrap justify-center gap-2 mb-5 min-h-12"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (!draggingLetter || draggingLetter.word !== word) {
+                            return;
+                          }
+                          if (draggingLetter.source === "slot") {
+                            moveLetterBackToPool(word, draggingLetter.index);
+                          }
+                          setDraggingLetter(null);
+                        }}
+                      >
+                        {board.pool.map((letter, poolIndex) => (
+                          <button
+                            key={`${word}-pool-${poolIndex}-${letter}`}
+                            draggable
+                            onDragStart={() =>
+                              setDraggingLetter({
+                                word,
+                                source: "pool",
+                                index: poolIndex,
+                                letter,
+                              })
+                            }
+                            onClick={() => handlePoolQuickPlace(word, poolIndex)}
+                            className="w-11 h-11 md:w-12 md:h-12 rounded-xl bg-[#E6F0FF] border-2 border-[#9AC7EB] text-[#5D3191] text-xl font-black select-none active:scale-95 transition-transform"
+                          >
+                            {letter}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {board.slots.map((letter, slotIndex) => (
+                          <button
+                            key={`${word}-slot-${slotIndex}`}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (!draggingLetter || draggingLetter.word !== word) {
+                                return;
+                              }
+                              placeLetterToSlot(word, slotIndex, {
+                                source: draggingLetter.source,
+                                index: draggingLetter.index,
+                                letter: draggingLetter.letter,
+                              });
+                              setDraggingLetter(null);
+                            }}
+                            onClick={() => {
+                              if (letter) {
+                                moveLetterBackToPool(word, slotIndex);
+                              }
+                            }}
+                            draggable={Boolean(letter)}
+                            onDragStart={() => {
+                              if (!letter) return;
+                              setDraggingLetter({
+                                word,
+                                source: "slot",
+                                index: slotIndex,
+                                letter,
+                              });
+                            }}
+                            className={`w-11 h-11 md:w-12 md:h-12 rounded-xl text-xl font-black select-none transition-colors ${
+                              letter
+                                ? "bg-[#F4EEFF] border-2 border-[#C9B3E8] text-[#5D3191]"
+                                : "bg-transparent border-2 border-dashed border-[#C8CBD4] text-transparent"
+                            }`}
+                          >
+                            {letter || " "}
+                          </button>
+                        ))}
+                      </div>
+                      {solved && (
+                        <p className="mt-3 text-center text-green-600 font-black text-sm md:text-base">
+                          Зөв үг: {word}
+                        </p>
+                      )}
                     </div>
                   );
                 })}
@@ -588,7 +922,10 @@ export default function DictationClient() {
 
               <div className="mt-4 flex gap-2 justify-end">
                 <button
-                  onClick={() => setShowAnagram(false)}
+                  onClick={() => {
+                    setShowAnagram(false);
+                    setSelectedAnagramWord(null);
+                  }}
                   className="px-4 py-2 rounded-xl bg-slate-100 text-slate-500 font-black"
                 >
                   Хаах
@@ -597,7 +934,7 @@ export default function DictationClient() {
                   onClick={handleAnagramCheck}
                   className="px-4 py-2 rounded-xl bg-[#5D3191] text-white font-black"
                 >
-                  Шалгах
+                  {selectedAnagramWord ? "Энэ үгийг шалгах" : "Шалгах"}
                 </button>
               </div>
             </motion.div>

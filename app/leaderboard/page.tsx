@@ -200,6 +200,7 @@ const PodiumHero = ({ player, size, delay }: PodiumHeroProps) => {
       border: "border-yellow-400",
       bg: "bg-yellow-400",
       shadow: "shadow-yellow-100",
+      aura: "rgba(250, 204, 21, 0.45)",
       icon: (
         <Crown className="w-10 h-10 md:w-16 md:h-16 text-yellow-400 fill-yellow-400" />
       ),
@@ -210,6 +211,7 @@ const PodiumHero = ({ player, size, delay }: PodiumHeroProps) => {
       border: "border-slate-300",
       bg: "bg-slate-400",
       shadow: "shadow-slate-100",
+      aura: "rgba(148, 163, 184, 0.35)",
       icon: (
         <Trophy className="w-8 h-8 md:w-12 md:h-12 text-slate-300 fill-slate-100" />
       ),
@@ -220,6 +222,7 @@ const PodiumHero = ({ player, size, delay }: PodiumHeroProps) => {
       border: "border-orange-300",
       bg: "bg-orange-400",
       shadow: "shadow-orange-100",
+      aura: "rgba(251, 146, 60, 0.35)",
       icon: (
         <Trophy className="w-7 h-7 md:w-10 md:h-10 text-orange-300 fill-orange-100" />
       ),
@@ -239,6 +242,12 @@ const PodiumHero = ({ player, size, delay }: PodiumHeroProps) => {
     >
       <div className="relative mb-4">
         <motion.div
+          animate={{ scale: [0.96, 1.06, 0.96], opacity: [0.35, 0.6, 0.35] }}
+          transition={{ repeat: Infinity, duration: 2.8 + player.rank * 0.4 }}
+          className="absolute -inset-4 md:-inset-6 rounded-[36px] md:rounded-[52px] blur-2xl z-0"
+          style={{ background: style.aura }}
+        />
+        <motion.div
           animate={{ y: [0, -8, 0] }}
           transition={{ repeat: Infinity, duration: 3 + player.rank }}
           className="absolute -top-10 md:-top-16 left-1/2 -translate-x-1/2 z-20 group-hover:scale-125 transition-transform"
@@ -248,6 +257,13 @@ const PodiumHero = ({ player, size, delay }: PodiumHeroProps) => {
         <div
           className={`${size} ${style.border} ${style.shadow} rounded-[32px] md:rounded-[48px] overflow-hidden p-1.5 bg-white border-[4px] md:border-[6px] relative z-10 transition-all duration-300 group-hover:-translate-y-2 group-hover:rotate-2`}
         >
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 45%)",
+            }}
+          />
           <img
             src={player.avatar}
             className="w-full h-full object-cover rounded-[24px] md:rounded-[38px]"

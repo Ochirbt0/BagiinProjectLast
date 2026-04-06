@@ -131,3 +131,6 @@ export const completeTopicProgress = (payload: {
     method: "POST",
     body: JSON.stringify(payload),
   });
+
+export const getCompletedTopics = (grade: number, level: Level) =>
+  api<{ topicIds: number[] }>(`progress/topics?grade=${grade}&level=${level}`);

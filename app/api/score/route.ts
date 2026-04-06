@@ -83,6 +83,16 @@ export async function POST(req: NextRequest) {
 
     const client = await clerkClient();
     const clerkUser = await client.users.getUser(userId);
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { avatarUrl: true },
+    });
+    const shouldKeepSelectedHero =
+      typeof existingUser?.avatarUrl === "string" &&
+      existingUser.avatarUrl.startsWith("/");
+    const resolvedAvatar = shouldKeepSelectedHero
+      ? existingUser?.avatarUrl
+      : (clerkUser.imageUrl ?? null);
 
     const dbUser = await prisma.user.upsert({
       where: { id: userId },
@@ -92,7 +102,7 @@ export async function POST(req: NextRequest) {
           (clerkUser.publicMetadata?.nickname as string) ||
           clerkUser.firstName ||
           "Баатар",
-        avatarUrl: clerkUser.imageUrl || null,
+        avatarUrl: resolvedAvatar,
         score: gainedScore,
       },
       update: {
@@ -101,7 +111,7 @@ export async function POST(req: NextRequest) {
           (clerkUser.publicMetadata?.nickname as string) ||
           clerkUser.firstName ||
           "Баатар",
-        avatarUrl: clerkUser.imageUrl || null,
+        avatarUrl: resolvedAvatar,
       },
     });
 

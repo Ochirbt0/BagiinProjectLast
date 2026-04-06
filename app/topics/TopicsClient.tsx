@@ -2,8 +2,16 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ChevronLeft, Star, Play, LayoutGrid, Lock } from "lucide-react";
 import {
+  ChevronLeft,
+  Star,
+  Play,
+  LayoutGrid,
+  Lock,
+  CheckCircle2,
+} from "lucide-react";
+import {
+  getCompletedTopics,
   getProgressStatus,
   getTopics,
   levelFromQuery,
@@ -48,6 +56,9 @@ export default function TopicsClient() {
   const [topics, setTopics] = useState<TopicCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [levelLocked, setLevelLocked] = useState(false);
+  const [completedTopicIds, setCompletedTopicIds] = useState<Set<number>>(
+    new Set(),
+  );
 
   useEffect(() => {
     const loadTopics = async () => {
@@ -58,8 +69,12 @@ export default function TopicsClient() {
 
         const data = await getTopics(grade, level);
         const progress = await getProgressStatus(grade).catch(() => []);
+        const completed = await getCompletedTopics(grade, level).catch(() => ({
+          topicIds: [],
+        }));
         const levelState = progress.find((p) => p.level === level);
         setLevelLocked(Boolean(levelState?.isLocked));
+        setCompletedTopicIds(new Set(completed.topicIds || []));
 
         const mapped = (data.topics || []).map((title, index) => ({
           id: index + 1,
@@ -236,7 +251,9 @@ export default function TopicsClient() {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
-                {topics.map((topic, index) => (
+                {topics.map((topic, index) => {
+                  const isCompleted = completedTopicIds.has(topic.id);
+                  return (
                   <motion.div
                     key={topic.id}
                     initial={{ opacity: 0, y: 30 }}
@@ -259,6 +276,12 @@ export default function TopicsClient() {
                     }`}
                     style={{ borderBottomColor: topic.color }}
                   >
+                    {isCompleted && (
+                      <div className="absolute top-4 right-4 px-2 py-1 rounded-full bg-green-50 border border-green-200 text-green-600 text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1.5">
+                        <CheckCircle2 size={12} />
+                        Давсан
+                      </div>
+                    )}
                     <div
                       className="w-16 h-16 lg:w-20 lg:h-20 rounded-[28px] flex items-center justify-center text-3xl lg:text-5xl mb-4 transition-transform group-hover:scale-110 group-hover:rotate-6 shadow-inner relative"
                       style={{ backgroundColor: `${topic.color}15` }}
@@ -287,13 +310,23 @@ export default function TopicsClient() {
                         </>
                       ) : (
                         <>
-                          <Play size={14} fill="white" />
-                          <span>Тоглох</span>
+                          {isCompleted ? (
+                            <>
+                              <CheckCircle2 size={14} />
+                              <span>Хийсэн</span>
+                            </>
+                          ) : (
+                            <>
+                              <Play size={14} fill="white" />
+                              <span>Тоглох</span>
+                            </>
+                          )}
                         </>
                       )}
                     </div>
                   </motion.div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

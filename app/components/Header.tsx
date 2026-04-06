@@ -46,9 +46,9 @@ const HeaderContent = () => {
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [showSelector, setShowSelector] = useState(false);
+  const [displayStars, setDisplayStars] = useState(0);
 
   // Clerk-ээс метадатыг унших хэсэг
-  const userStars = (user?.publicMetadata?.stars as number) || 0;
   const userNickname =
     (user?.publicMetadata?.nickname as string) || user?.firstName || "Баатар";
   const userGrade = (user?.publicMetadata?.grade as string) || "";
@@ -72,6 +72,46 @@ const HeaderContent = () => {
     window.addEventListener("storage", syncAvatar);
     return () => window.removeEventListener("storage", syncAvatar);
   }, []);
+
+  useEffect(() => {
+    const syncStars = async () => {
+      if (!isSignedIn) {
+        setDisplayStars(0);
+        return;
+      }
+
+      const cachedStars = Number(localStorage.getItem("userStars") || "0");
+      if (Number.isFinite(cachedStars)) {
+        setDisplayStars(cachedStars);
+      }
+
+      try {
+        const res = await fetch("/api/get-stars");
+        if (!res.ok) return;
+        const payload = (await res.json()) as { stars?: number };
+        const latest = Number(payload?.stars ?? 0);
+        setDisplayStars(latest);
+        localStorage.setItem("userStars", String(latest));
+      } catch {
+        // ignore client-side sync errors
+      }
+    };
+
+    const handleStarsUpdate = () => {
+      const cachedStars = Number(localStorage.getItem("userStars") || "0");
+      if (Number.isFinite(cachedStars)) {
+        setDisplayStars(cachedStars);
+      }
+    };
+
+    syncStars();
+    window.addEventListener("stars-updated", handleStarsUpdate);
+    window.addEventListener("storage", handleStarsUpdate);
+    return () => {
+      window.removeEventListener("stars-updated", handleStarsUpdate);
+      window.removeEventListener("storage", handleStarsUpdate);
+    };
+  }, [isSignedIn, isLoaded]);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
@@ -166,7 +206,7 @@ const HeaderContent = () => {
                 <div className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 bg-yellow-50/50 rounded-[20px] mr-1">
                   <Star className="w-4 h-4 md:w-5 md:h-5 text-yellow-500 fill-yellow-400" />
                   <span className="text-[#5D3191] font-black text-sm md:text-lg leading-none">
-                    {isLoaded ? userStars : "..."}
+                    {isLoaded ? displayStars : "..."}
                   </span>
                 </div>
 
@@ -241,6 +281,11 @@ const HeaderContent = () => {
                                     "selectedHero",
                                     JSON.stringify(av),
                                   );
+                                  fetch("/api/select-hero", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ hero: av }),
+                                  }).catch(() => {});
                                   setShowSelector(false);
                                 }
                               }}
