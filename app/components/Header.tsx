@@ -139,7 +139,7 @@ const HeaderContent = () => {
             </SignInButton>
           ) : (
             <div className="flex items-center gap-2 md:gap-4 relative">
-              <div className="hidden md:flex flex-col items-end mr-1">
+              {/* <div className="hidden md:flex flex-col items-end mr-1">
                 <span className="text-[#5D3191] font-black text-[12px] uppercase tracking-tighter leading-none">
                   {isLoaded ? userNickname : "..."}
                 </span>
@@ -148,7 +148,7 @@ const HeaderContent = () => {
                     {userGrade} анги
                   </span>
                 )}
-              </div>
+              </div> */}
 
               <Link href="/leaderboard">
                 <motion.div
@@ -156,7 +156,7 @@ const HeaderContent = () => {
                   className="flex items-center justify-center h-10 md:h-12 px-3 md:px-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-purple-100 transition-all cursor-pointer"
                 >
                   <Trophy className="w-5 h-5 text-yellow-500 md:mr-2 fill-yellow-100" />
-                  <span className="text-[#5D3191] font-bold text-[10px] uppercase tracking-widest hidden lg:block">
+                  <span className="text-[#5D3191] font-bold text-[13px]  tracking-widest hidden lg:block">
                     Шилдэгүүд
                   </span>
                 </motion.div>

@@ -50,7 +50,10 @@ const LeaderboardPage = () => {
         const mapped = rows.map((p, i) => toPlayer(p, i + 1));
         setPlayers(mapped);
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Leaderboard ачааллахад алдаа гарлаа";
+        const msg =
+          e instanceof Error
+            ? e.message
+            : "Leaderboard ачааллахад алдаа гарлаа";
         setError(msg);
       } finally {
         setLoading(false);
@@ -96,8 +99,8 @@ const LeaderboardPage = () => {
 
   return (
     <div className="min-h-screen bg-[#FDFCFE] relative overflow-hidden pt-30 pb-10 flex">
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="flex justify-center items-center mb-16">
+      <div className="container mx-auto px-4  relative z-10">
+        <div className="flex justify-center items-center mb-16 md:mb-26">
           <div className="text-center">
             <h1 className="text-[#5D3191] font-[1000] text-2xl md:text-4xl text-center tracking-tighter uppercase italic">
               Шилдэг <span className="text-[#8DC63F]">Баатрууд</span>
@@ -108,13 +111,25 @@ const LeaderboardPage = () => {
         {(podium.gold || podium.silver || podium.bronze) && (
           <div className="flex items-end justify-center gap-3 md:gap-8 mb-20">
             {podium.silver && (
-              <PodiumHero player={podium.silver} size="w-28 h-28 md:w-40 md:h-40" delay={0.2} />
+              <PodiumHero
+                player={podium.silver}
+                size="w-28 h-28 md:w-40 md:h-40"
+                delay={0.2}
+              />
             )}
             {podium.gold && (
-              <PodiumHero player={podium.gold} size="w-36 h-36 md:w-52 md:h-52" delay={0} />
+              <PodiumHero
+                player={podium.gold}
+                size="w-36 h-36 md:w-52 md:h-52"
+                delay={0}
+              />
             )}
             {podium.bronze && (
-              <PodiumHero player={podium.bronze} size="w-24 h-24 md:w-36 md:h-36" delay={0.4} />
+              <PodiumHero
+                player={podium.bronze}
+                size="w-24 h-24 md:w-36 md:h-36"
+                delay={0.4}
+              />
             )}
           </div>
         )}
@@ -127,7 +142,10 @@ const LeaderboardPage = () => {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.05 }}
-              whileHover={{ x: 10, backgroundColor: "rgba(255, 255, 255, 0.9)" }}
+              whileHover={{
+                x: 10,
+                backgroundColor: "rgba(255, 255, 255, 0.9)",
+              }}
               className="flex items-center justify-between p-3 md:p-4 bg-white/70 backdrop-blur-md rounded-[24px] border border-white shadow-sm hover:shadow-md transition-all group cursor-default"
             >
               <div className="flex items-center gap-4">
@@ -135,14 +153,22 @@ const LeaderboardPage = () => {
                   {p.rank}
                 </span>
                 <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl overflow-hidden p-0.5 bg-gradient-to-tr from-gray-100 to-white border border-gray-100 group-hover:rotate-3 transition-transform">
-                  <img src={p.avatar} className="w-full h-full object-cover rounded-[14px]" alt="avatar" />
+                  <img
+                    src={p.avatar}
+                    className="w-full h-full object-cover rounded-[14px]"
+                    alt="avatar"
+                  />
                 </div>
-                <h3 className="text-[#5D3191] font-black text-sm md:text-lg">{p.name}</h3>
+                <h3 className="text-[#5D3191] font-black text-sm md:text-lg">
+                  {p.name}
+                </h3>
               </div>
 
               <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-gray-50 shadow-inner group-hover:scale-105 transition-transform">
                 <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                <span className="text-[#5D3191] font-black text-sm md:text-lg">{p.stars}</span>
+                <span className="text-[#5D3191] font-black text-sm md:text-lg">
+                  {p.stars}
+                </span>
               </div>
             </motion.div>
           ))}
@@ -161,25 +187,44 @@ type PodiumHeroProps = {
 const PodiumHero = ({ player, size, delay }: PodiumHeroProps) => {
   const rankColors: Record<
     number,
-    { border: string; bg: string; shadow: string; icon: React.ReactNode }
+    {
+      border: string;
+      bg: string;
+      shadow: string;
+      icon: React.ReactNode;
+      title: string;
+      titleColor: string;
+    }
   > = {
     1: {
       border: "border-yellow-400",
       bg: "bg-yellow-400",
       shadow: "shadow-yellow-100",
-      icon: <Crown className="w-10 h-10 md:w-16 md:h-16 text-yellow-400 fill-yellow-400" />,
+      icon: (
+        <Crown className="w-10 h-10 md:w-16 md:h-16 text-yellow-400 fill-yellow-400" />
+      ),
+      title: "Алтан Баатар",
+      titleColor: "text-yellow-600",
     },
     2: {
       border: "border-slate-300",
       bg: "bg-slate-400",
       shadow: "shadow-slate-100",
-      icon: <Trophy className="w-8 h-8 md:w-12 md:h-12 text-slate-300 fill-slate-100" />,
+      icon: (
+        <Trophy className="w-8 h-8 md:w-12 md:h-12 text-slate-300 fill-slate-100" />
+      ),
+      title: "Мөнгөн Баатар",
+      titleColor: "text-slate-500",
     },
     3: {
       border: "border-orange-300",
       bg: "bg-orange-400",
       shadow: "shadow-orange-100",
-      icon: <Trophy className="w-7 h-7 md:w-10 md:h-10 text-orange-300 fill-orange-100" />,
+      icon: (
+        <Trophy className="w-7 h-7 md:w-10 md:h-10 text-orange-300 fill-orange-100" />
+      ),
+      title: "Хүрэл Баатар",
+      titleColor: "text-orange-600",
     },
   };
 
@@ -217,7 +262,13 @@ const PodiumHero = ({ player, size, delay }: PodiumHeroProps) => {
       </div>
 
       <div className="text-center">
-        <h3 className="text-[#5D3191] font-black text-sm md:text-xl mb-1 truncate max-w-[120px] md:max-w-[200px] uppercase italic tracking-tighter">
+        <p
+          className={`text-[9px] md:text-[15px] font-[1000] uppercase tracking-[0.2em] mb-0.5 ${style.titleColor}`}
+        >
+          {style.title}
+        </p>
+
+        <h3 className="text-[#5D3191] font-black text-xs md:text-l mb-1 truncate max-w-[120px] md:max-w-[200px] uppercase italic tracking-tighter">
           {player.name}
         </h3>
         <div className="inline-flex items-center gap-1.5 bg-white border border-gray-100 px-3 py-1.5 rounded-xl shadow-sm group-hover:shadow-yellow-100 transition-all group-hover:border-yellow-200">
