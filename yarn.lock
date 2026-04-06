@@ -174,7 +174,7 @@
 
 "@clerk/nextjs@^7.0.8":
   version "7.0.8"
-  resolved "https://registry.npmjs.org/@clerk/nextjs/-/nextjs-7.0.8.tgz"
+  resolved "https://registry.yarnpkg.com/@clerk/nextjs/-/nextjs-7.0.8.tgz#3629583a98e653a9ddafe23a0a702680c8cb493e"
   integrity sha512-Suwl7Mox+Oiht1wqC/g1b7YdDlicciVJAP+YujgtHBHdcgQ7JgtOtXYV7xHJgBnMUZw23F2f64vPualm5TtPFg==
   dependencies:
     "@clerk/backend" "^3.2.4"
@@ -1840,20 +1840,15 @@ doctrine@^2.1.0:
   dependencies:
     esutils "^2.0.2"
 
-dotenv@*:
+dotenv@*, dotenv@^17.4.0:
   version "17.4.0"
-  resolved "https://registry.npmjs.org/dotenv/-/dotenv-17.4.0.tgz"
+  resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-17.4.0.tgz#9a5de24d7112a889b4b179ffbe83933298c41d37"
   integrity sha512-kCKF62fwtzwYm0IGBNjRUjtJgMfGapII+FslMHIjMR5KTnwEmBmWLDRSnc3XSNP8bNy34tekgQyDT0hr7pERRQ==
 
 dotenv@^16.6.1:
   version "16.6.1"
   resolved "https://registry.npmjs.org/dotenv/-/dotenv-16.6.1.tgz"
   integrity sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==
-
-dotenv@^17.4.0:
-  version "17.4.0"
-  resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-17.4.0.tgz#9a5de24d7112a889b4b179ffbe83933298c41d37"
-  integrity sha512-kCKF62fwtzwYm0IGBNjRUjtJgMfGapII+FslMHIjMR5KTnwEmBmWLDRSnc3XSNP8bNy34tekgQyDT0hr7pERRQ==
 
 dunder-proto@^1.0.0, dunder-proto@^1.0.1:
   version "1.0.1"
@@ -3697,7 +3692,7 @@ prelude-ls@^1.2.1:
 
 prisma@^7.6.0:
   version "7.6.0"
-  resolved "https://registry.npmjs.org/prisma/-/prisma-7.6.0.tgz"
+  resolved "https://registry.yarnpkg.com/prisma/-/prisma-7.6.0.tgz#a24abcc6631dd33554e8b16ded3ba0041a8cf1e5"
   integrity sha512-OKJIPT81K3+F+AayIkY/Y3mkF2NWoFh7lZApaaqPYy7EHILKdO0VsmGkP+hDKYTySHsFSyLWXm/JgcR1B8fY1Q==
   dependencies:
     "@prisma/config" "7.6.0"
