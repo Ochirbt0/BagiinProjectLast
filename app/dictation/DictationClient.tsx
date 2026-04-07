@@ -697,27 +697,41 @@ export default function DictationClient() {
           </div>
 
           <div className="flex-1 px-4 md:px-12">
-            <div className="relative h-full min-h-[320px] md:min-h-[350px] bg-slate-50/30 rounded-[28px] border border-slate-100 shadow-inner overflow-hidden">
+            {/* ГАДНА САВ: scroll-гүй, overflow-hidden */}
+            <div className="relative h-auto min-h-[320px] md:min-h-[350px] bg-white rounded-[28px] border-2 border-purple-50 shadow-inner overflow-hidden">
+              {/* Дэвтэрийн шугамнууд - textarea-тайгаа хамт сунана */}
               <div
-                className="absolute inset-0 opacity-[0.1]"
+                className="absolute inset-0 opacity-[0.2] pointer-events-none"
                 style={{
                   backgroundImage:
-                    "linear-gradient(#5D3191 1px, transparent 1px)",
+                    "linear-gradient(#5D3191 1.5px, transparent 1.5px)",
                   backgroundSize: "100% 40px",
-                  backgroundPosition: "0 20px",
+                  backgroundPosition: "0 35px",
                 }}
               />
-              <div className="absolute left-10 top-0 bottom-0 w-[1px] bg-red-200/40" />
+
+              {/* Зүүн талын босоо улаан шугам */}
+              <div className="absolute left-14 top-0 bottom-0 w-[1.5px] bg-red-200/50 pointer-events-none" />
+
+              {/* TEXTAREA: overflow-hidden болгож, өндрийг нь агуулгаар нь сунгана */}
               <textarea
                 value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
+                onChange={(e) => {
+                  setUserInput(e.target.value);
+                  // Өндрийг нь автоматаар тохируулах (Scroll-гүй болгох гол хэсэг)
+                  e.target.style.height = "auto";
+                  e.target.style.height = e.target.scrollHeight + "px";
+                }}
                 placeholder={`Сонссон ${expectedLineCount} өгүүлбэрээ мөр мөрөөр бичээрэй...`}
-                className="relative w-full h-full p-8 pl-16 bg-transparent text-base md:text-xl font-bold text-slate-700 focus:outline-none resize-none leading-[40px] z-20 overflow-y-auto"
+                spellCheck="false"
+                className="relative w-full p-8 pl-20 bg-transparent text-lg md:text-xl font-bold text-slate-700 focus:outline-none resize-none leading-[40px] z-20 overflow-hidden min-h-[350px]"
+                style={{ height: "auto" }}
               />
             </div>
 
+            {/* Алдаатай үгс харуулах хэсэг (Хэвээрээ) */}
             {reviewWords.some((word) => word.isWrong) && !isTopicPassed && (
-              <div className="mt-4 p-4 rounded-2xl border border-rose-100 bg-rose-50/60">
+              <div className="mt-4 p-4 rounded-2xl border border-rose-100 bg-rose-50/60 transition-all">
                 <p className="text-[11px] font-black uppercase tracking-widest text-rose-500 mb-2">
                   Алдаатай үгс
                 </p>
@@ -742,7 +756,7 @@ export default function DictationClient() {
                       <button
                         key={`${word.value}-${idx}`}
                         onClick={() => openAnagramByWord(word.targetWord)}
-                        className={`px-3 py-1.5 rounded-full border font-black text-sm transition-colors ${
+                        className={`px-3 py-1.5 rounded-full border font-black text-sm transition-all active:scale-95 ${
                           solved
                             ? "bg-green-50 border-green-200 text-green-600 hover:bg-green-100"
                             : "bg-white border-rose-200 text-rose-500 hover:bg-rose-100"
