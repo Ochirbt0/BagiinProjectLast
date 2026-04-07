@@ -24,8 +24,8 @@ import {
 
 const PRIMARY_TTS_RATE = 1;
 const THIRD_PASS_TTS_RATE = 0.75;
-const SENTENCE_GAP_MS = 2000;
-const REPEAT_GAP_MS = 1000;
+const SENTENCE_GAP_MS = 3000;
+const REPEAT_GAP_MS = 2000;
 
 export default function DictationClient() {
   const searchParams = useSearchParams();
@@ -107,6 +107,78 @@ export default function DictationClient() {
     word: string,
     boards: Record<string, { pool: string[]; slots: Array<string | null> }>,
   ) => normalizeWord((boards[word]?.slots || []).join("")) === word;
+
+  const getWordMismatches = (expected: string[], actual: string[]) => {
+    const m = expected.length;
+    const n = actual.length;
+    const dp: number[][] = Array.from({ length: m + 1 }, () =>
+      Array.from({ length: n + 1 }, () => 0),
+    );
+
+    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        if (expected[i - 1] === actual[j - 1]) {
+          dp[i][j] = dp[i - 1][j - 1];
+        } else {
+          dp[i][j] = Math.min(
+            dp[i - 1][j - 1] + 1,
+            dp[i - 1][j] + 1,
+            dp[i][j - 1] + 1,
+          );
+        }
+      }
+    }
+
+    const mismatches: Array<{
+      expectedWord: string;
+      actualWord: string;
+      userIndex: number;
+    }> = [];
+
+    let i = m;
+    let j = n;
+    while (i > 0 || j > 0) {
+      if (
+        i > 0 &&
+        j > 0 &&
+        expected[i - 1] === actual[j - 1] &&
+        dp[i][j] === dp[i - 1][j - 1]
+      ) {
+        i--;
+        j--;
+        continue;
+      }
+
+      if (i > 0 && j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) {
+        mismatches.push({
+          expectedWord: expected[i - 1],
+          actualWord: actual[j - 1],
+          userIndex: j - 1,
+        });
+        i--;
+        j--;
+        continue;
+      }
+
+      if (j > 0 && dp[i][j] === dp[i][j - 1] + 1) {
+        j--;
+        continue;
+      }
+
+      if (i > 0 && dp[i][j] === dp[i - 1][j] + 1) {
+        i--;
+        continue;
+      }
+
+      if (i > 0) i--;
+      if (j > 0) j--;
+    }
+
+    return mismatches.reverse();
+  };
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -306,32 +378,34 @@ export default function DictationClient() {
         .map((w) => normalizeWord(w))
         .filter(Boolean);
 
-      const correctWordsForAnagram: string[] = [];
-      const review: Array<{ value: string; isWrong: boolean; targetWord?: string }> =
-        [];
-      const maxLength = Math.max(
-        originalWordsNormalized.length,
-        userWordsNormalized.length,
+      const mismatches = getWordMismatches(
+        originalWordsNormalized,
+        userWordsNormalized,
       );
-      for (let i = 0; i < maxLength; i++) {
-        const expected = originalWordsNormalized[i];
-        const actual = userWordsNormalized[i];
-        const rawActual = userWordsRaw[i];
-        if (expected && expected !== actual) {
-          correctWordsForAnagram.push(expected);
-        }
-        if (rawActual) {
-          const isWrong = Boolean(expected && expected !== actual);
-          review.push({
-            value: rawActual,
-            isWrong,
-            targetWord: isWrong ? expected : undefined,
-          });
+      const targetByUserIndex = new Map<number, string>();
+      for (const mismatch of mismatches) {
+        if (!targetByUserIndex.has(mismatch.userIndex)) {
+          targetByUserIndex.set(mismatch.userIndex, mismatch.expectedWord);
         }
       }
+
+      const review: Array<{
+        value: string;
+        isWrong: boolean;
+        targetWord?: string;
+      }> = userWordsRaw.map((rawWord, userIndex) => {
+        const targetWord = targetByUserIndex.get(userIndex);
+        return {
+          value: rawWord,
+          isWrong: Boolean(targetWord),
+          targetWord,
+        };
+      });
       setReviewWords(review);
 
-      const uniqueIncorrect = Array.from(new Set(correctWordsForAnagram));
+      const uniqueIncorrect = Array.from(
+        new Set(mismatches.map((mismatch) => mismatch.expectedWord)),
+      );
 
       if (uniqueIncorrect.length > 0) {
         const shuffledMap = uniqueIncorrect.reduce(
@@ -353,7 +427,10 @@ export default function DictationClient() {
               };
               return acc;
             },
-            {} as Record<string, { pool: string[]; slots: Array<string | null> }>,
+            {} as Record<
+              string,
+              { pool: string[]; slots: Array<string | null> }
+            >,
           ),
         );
         setShowAnagram(false);
@@ -664,11 +741,7 @@ export default function DictationClient() {
               className="w-full md:w-48 bg-[#5D3191] text-white py-4 rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-3 transition-all disabled:opacity-60"
             >
               {isTopicPassed ? <ChevronLeft size={18} /> : <Send size={18} />}
-              {isTopicPassed
-                ? "БУЦАХ"
-                : isChecking
-                  ? "ШАЛГАЖ БАЙНА"
-                  : "ИЛГЭЭХ"}
+              {isTopicPassed ? "БУЦАХ" : isChecking ? "ШАЛГАЖ БАЙНА" : "ИЛГЭЭХ"}
             </motion.button>
           </div>
         </div>
@@ -854,7 +927,9 @@ export default function DictationClient() {
                                 letter,
                               })
                             }
-                            onClick={() => handlePoolQuickPlace(word, poolIndex)}
+                            onClick={() =>
+                              handlePoolQuickPlace(word, poolIndex)
+                            }
                             className="w-11 h-11 md:w-12 md:h-12 rounded-xl bg-[#E6F0FF] border-2 border-[#9AC7EB] text-[#5D3191] text-xl font-black select-none active:scale-95 transition-transform"
                           >
                             {letter}
@@ -869,7 +944,10 @@ export default function DictationClient() {
                             onDragOver={(e) => e.preventDefault()}
                             onDrop={(e) => {
                               e.preventDefault();
-                              if (!draggingLetter || draggingLetter.word !== word) {
+                              if (
+                                !draggingLetter ||
+                                draggingLetter.word !== word
+                              ) {
                                 return;
                               }
                               placeLetterToSlot(word, slotIndex, {

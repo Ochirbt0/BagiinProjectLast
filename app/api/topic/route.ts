@@ -128,7 +128,7 @@ FORMAT:
 }
 `;
 
-    const models = ["gpt-4.1-mini"] as const;
+    const models = ["gpt-5.2"] as const;
     let lastError: unknown = null;
 
     for (const model of models) {
