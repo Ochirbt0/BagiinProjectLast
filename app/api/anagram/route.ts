@@ -14,17 +14,51 @@ const wordsByGrade: Record<string, string[]> = {
   ],
 };
 
-function shuffle(word: string) {
-  let result = word;
+const SHUFFLE_ATTEMPTS = 20;
 
-  while (result === word) {
-    result = word
-      .split("")
-      .sort(() => Math.random() - 0.5)
-      .join("");
+const normalizeAnswer = (value: string) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+function shuffle(word: string) {
+  const chars = word.split("");
+  const movableIndexes = chars
+    .map((ch, idx) => ({ ch, idx }))
+    .filter((item) => /[\p{L}\p{N}]/u.test(item.ch))
+    .map((item) => item.idx);
+
+  if (movableIndexes.length < 2) return word;
+
+  const original = [...chars];
+  let attempts = 0;
+  while (attempts < SHUFFLE_ATTEMPTS) {
+    const letters = movableIndexes.map((idx) => original[idx]);
+    for (let i = letters.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const temp = letters[i];
+      letters[i] = letters[j];
+      letters[j] = temp;
+    }
+
+    const next = [...original];
+    movableIndexes.forEach((charIdx, letterIdx) => {
+      next[charIdx] = letters[letterIdx];
+    });
+
+    const shuffled = next.join("");
+    if (shuffled !== word) return shuffled;
+    attempts += 1;
   }
 
-  return result;
+  const rotated = [...original];
+  const first = rotated[movableIndexes[0]];
+  for (let i = 0; i < movableIndexes.length - 1; i += 1) {
+    rotated[movableIndexes[i]] = rotated[movableIndexes[i + 1]];
+  }
+  rotated[movableIndexes[movableIndexes.length - 1]] = first;
+  return rotated.join("");
 }
 
 export async function GET(req: NextRequest) {
@@ -46,7 +80,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const correct = original === answer;
+  const correct = normalizeAnswer(original) === normalizeAnswer(answer);
 
   return NextResponse.json({ correct });
 }

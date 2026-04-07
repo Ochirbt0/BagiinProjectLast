@@ -362,42 +362,61 @@ export default function DictationClient() {
         window.dispatchEvent(new Event("stars-updated"));
       }
 
-      const originalWords = sourceSentences
-        .join(" ")
-        .split(/\s+/)
-        .map((w) => String(w || "").trim())
+      const userLinesRaw = userInput
+        .split("\n")
+        .map((line) => line.trim())
         .filter(Boolean);
-      const originalComparable = originalWords
-        .map((rawWord) => {
-          const normalized = normalizeWord(rawWord);
-          return { rawWord, normalized };
-        })
-        .filter((item) => Boolean(item.normalized));
-      const originalWordsNormalized = originalComparable.map(
-        (item) => item.normalized,
-      );
-      const userWordsRaw = userInput
-        .split(/\s+/)
-        .map((w) => String(w || "").trim())
-        .filter(Boolean);
-      const userComparable = userWordsRaw
-        .map((rawWord, rawIndex) => {
-          const normalized = normalizeWord(rawWord);
-          return { rawWord, normalized, rawIndex };
-        })
-        .filter((item) => Boolean(item.normalized));
-      const userWordsNormalized = userComparable.map((item) => item.normalized);
 
-      const mismatches = getWordMismatches(
-        originalWordsNormalized,
-        userWordsNormalized,
+      const userWordsRaw: string[] = [];
+      const userLinesComparable = userLinesRaw.map((line) => {
+        const lineWords = line
+          .split(/\s+/)
+          .map((w) => String(w || "").trim())
+          .filter(Boolean);
+        return lineWords
+          .map((rawWord) => {
+            const normalized = normalizeWord(rawWord);
+            const rawIndex = userWordsRaw.length;
+            userWordsRaw.push(rawWord);
+            return { rawWord, normalized, rawIndex };
+          })
+          .filter((item) => Boolean(item.normalized));
+      });
+
+      const originalLinesComparable = sourceSentences.map((line) =>
+        line
+          .split(/\s+/)
+          .map((w) => String(w || "").trim())
+          .filter(Boolean)
+          .map((rawWord) => ({
+            rawWord,
+            normalized: normalizeWord(rawWord),
+          }))
+          .filter((item) => Boolean(item.normalized)),
       );
+
       const targetByRawUserIndex = new Map<number, string>();
-      for (const mismatch of mismatches) {
-        const rawIndex = userComparable[mismatch.userIndex]?.rawIndex;
-        if (typeof rawIndex !== "number") continue;
-        if (!targetByRawUserIndex.has(rawIndex)) {
-          targetByRawUserIndex.set(rawIndex, mismatch.expectedWord);
+
+      const lineCount = Math.min(
+        originalLinesComparable.length,
+        userLinesComparable.length,
+      );
+      for (let lineIndex = 0; lineIndex < lineCount; lineIndex += 1) {
+        const expectedLine = originalLinesComparable[lineIndex].map(
+          (item) => item.normalized,
+        );
+        const actualLine = userLinesComparable[lineIndex].map(
+          (item) => item.normalized,
+        );
+        const lineMismatches = getWordMismatches(expectedLine, actualLine);
+
+        for (const mismatch of lineMismatches) {
+          const rawIndex =
+            userLinesComparable[lineIndex][mismatch.userIndex]?.rawIndex;
+          if (typeof rawIndex !== "number") continue;
+          if (!targetByRawUserIndex.has(rawIndex)) {
+            targetByRawUserIndex.set(rawIndex, mismatch.expectedWord);
+          }
         }
       }
 
@@ -416,7 +435,11 @@ export default function DictationClient() {
       setReviewWords(review);
 
       const uniqueIncorrect = Array.from(
-        new Set(mismatches.map((mismatch) => mismatch.expectedWord)),
+        new Set(
+          Array.from(targetByRawUserIndex.values()).filter(
+            (word) => word.length > 0,
+          ),
+        ),
       );
 
       if (uniqueIncorrect.length > 0) {
