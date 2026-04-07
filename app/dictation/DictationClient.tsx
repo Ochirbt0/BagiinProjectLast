@@ -367,25 +367,37 @@ export default function DictationClient() {
         .split(/\s+/)
         .map((w) => String(w || "").trim())
         .filter(Boolean);
-      const originalWordsNormalized = originalWords
-        .map((w) => normalizeWord(w))
-        .filter(Boolean);
+      const originalComparable = originalWords
+        .map((rawWord) => {
+          const normalized = normalizeWord(rawWord);
+          return { rawWord, normalized };
+        })
+        .filter((item) => Boolean(item.normalized));
+      const originalWordsNormalized = originalComparable.map(
+        (item) => item.normalized,
+      );
       const userWordsRaw = userInput
         .split(/\s+/)
         .map((w) => String(w || "").trim())
         .filter(Boolean);
-      const userWordsNormalized = userWordsRaw
-        .map((w) => normalizeWord(w))
-        .filter(Boolean);
+      const userComparable = userWordsRaw
+        .map((rawWord, rawIndex) => {
+          const normalized = normalizeWord(rawWord);
+          return { rawWord, normalized, rawIndex };
+        })
+        .filter((item) => Boolean(item.normalized));
+      const userWordsNormalized = userComparable.map((item) => item.normalized);
 
       const mismatches = getWordMismatches(
         originalWordsNormalized,
         userWordsNormalized,
       );
-      const targetByUserIndex = new Map<number, string>();
+      const targetByRawUserIndex = new Map<number, string>();
       for (const mismatch of mismatches) {
-        if (!targetByUserIndex.has(mismatch.userIndex)) {
-          targetByUserIndex.set(mismatch.userIndex, mismatch.expectedWord);
+        const rawIndex = userComparable[mismatch.userIndex]?.rawIndex;
+        if (typeof rawIndex !== "number") continue;
+        if (!targetByRawUserIndex.has(rawIndex)) {
+          targetByRawUserIndex.set(rawIndex, mismatch.expectedWord);
         }
       }
 
@@ -394,7 +406,7 @@ export default function DictationClient() {
         isWrong: boolean;
         targetWord?: string;
       }> = userWordsRaw.map((rawWord, userIndex) => {
-        const targetWord = targetByUserIndex.get(userIndex);
+        const targetWord = targetByRawUserIndex.get(userIndex);
         return {
           value: rawWord,
           isWrong: Boolean(targetWord),
