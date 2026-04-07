@@ -22,10 +22,10 @@ import {
   submitScore,
 } from "@/lib/backend-api";
 
-const PRIMARY_TTS_RATE = 1;
-const THIRD_PASS_TTS_RATE = 0.75;
+const PRIMARY_TTS_RATE = 0.75;
+const THIRD_PASS_TTS_RATE = 0.5;
 const SENTENCE_GAP_MS = 3000;
-const REPEAT_GAP_MS = 2000;
+const REPEAT_GAP_MS = 3000;
 
 export default function DictationClient() {
   const searchParams = useSearchParams();
