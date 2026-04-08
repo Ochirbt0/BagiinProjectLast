@@ -366,11 +366,6 @@
 
 // export default Header;
 
-
-
-
-
-
 "use client";
 import React, { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -382,7 +377,7 @@ import {
   Lock,
   LogOut,
   LayoutGrid,
-  UserCog
+  UserCog,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -390,11 +385,11 @@ import { useRouter } from "next/navigation";
 import { useUser, useClerk, SignInButton } from "@clerk/nextjs";
 
 const DEFAULT_AVATARS = [
-  { id: 1,  src: "/16.png", isLocked: false },
-  { id: 2,  src: "/1.png", isLocked: false },
-  { id: 3,  src: "/3.png", isLocked: false },
-  { id: 4,  src: "/17.png", isLocked: false },
-  { id: 5,  src: "/11.png", isLocked: false },
+  { id: 1, src: "/engiin1.png" },
+  { id: 2, src: "/engiin2.png" },
+  { id: 3, src: "/engiin3.png" },
+  { id: 4, src: "/engiin4.png" },
+  { id: 5, src: "/engiin5.png" },
 ];
 
 const HeaderContent = () => {
@@ -408,7 +403,8 @@ const HeaderContent = () => {
   const [dynamicHeroes, setDynamicHeroes] = useState<any[]>([]);
   const [selectedAvatar, setSelectedAvatar] = useState(DEFAULT_AVATARS[0]);
 
-  const userNickname = (user?.publicMetadata?.nickname as string) || user?.firstName || "Баатар";
+  const userNickname =
+    (user?.publicMetadata?.nickname as string) || user?.firstName || "Баатар";
   const userGrade = (user?.publicMetadata?.grade as string) || "";
   const userAge = (user?.publicMetadata?.age as number) || "";
 
@@ -422,7 +418,11 @@ const HeaderContent = () => {
         const res = await fetch(`/api/unlock-heroes?userId=${user.id}`);
         if (res.ok) {
           const data = await res.json();
-          setDynamicHeroes(data.heroes && data.heroes.length > 0 ? data.heroes : DEFAULT_AVATARS);
+          setDynamicHeroes(
+            data.heroes && data.heroes.length > 0
+              ? data.heroes
+              : DEFAULT_AVATARS,
+          );
         }
       } catch (e) {
         setDynamicHeroes(DEFAULT_AVATARS);
@@ -476,7 +476,9 @@ const HeaderContent = () => {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 px-4 md:px-0 ${
-        isScrolled ? "bg-white/80 backdrop-blur-xl shadow-sm py-2" : "bg-transparent py-4 md:py-6"
+        isScrolled
+          ? "bg-white/80 backdrop-blur-xl shadow-sm py-2"
+          : "bg-transparent py-4 md:py-6"
       }`}
     >
       <div className="container mx-auto flex items-center justify-between">
@@ -485,12 +487,21 @@ const HeaderContent = () => {
             <div className="relative w-12 h-12 md:w-16 md:h-16">
               <div className="absolute inset-0 bg-gradient-to-b from-[#8DC63F] to-[#76a835] rounded-xl md:rounded-2xl shadow-[0_5px_0_0_#5e852a] transform rotate-2 group-hover:rotate-0 transition-transform duration-300" />
               <div className="absolute inset-0 z-10 flex items-center justify-center overflow-hidden rounded-xl md:rounded-2xl bg-white/10">
-                <Image src="/logo.png" alt="Logo"  fill className="object-cover scale-110" priority />
+                <Image
+                  src="/logo.png"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                  alt="Logo"
+                />
               </div>
             </div>
             <div className="flex flex-col ml-1">
-              <h1 className="text-[#5D3191] font-black text-sm md:text-xl leading-none tracking-tighter uppercase">Зөв Бичгийн</h1>
-              <h2 className="text-[#8DC63F] font-black text-[10px] md:text-sm leading-none uppercase tracking-[0.25em] mt-1">Баатар</h2>
+              <h1 className="text-[#5D3191] font-black text-sm md:text-xl leading-none tracking-tighter uppercase">
+                Зөв Бичгийн
+              </h1>
+              <h2 className="text-[#8DC63F] font-black text-[10px] md:text-sm leading-none uppercase tracking-[0.25em] mt-1">
+                Баатар
+              </h2>
             </div>
           </div>
         </Link>
@@ -507,7 +518,9 @@ const HeaderContent = () => {
               <Link href="/leaderboard">
                 <div className="flex items-center h-10 md:h-12 px-3 md:px-5 bg-white border border-gray-100 rounded-2xl shadow-sm cursor-pointer hover:y-[-2px] transition-all">
                   <Trophy className="w-5 h-5 text-yellow-500 md:mr-2 fill-yellow-100" />
-                  <span className="text-[#5D3191] font-bold text-[13px] tracking-widest hidden lg:block">Шилдэгүүд</span>
+                  <span className="text-[#5D3191] font-bold text-[13px] tracking-widest hidden lg:block">
+                    Шилдэгүүд
+                  </span>
                 </div>
               </Link>
 
@@ -519,10 +532,23 @@ const HeaderContent = () => {
                   </span>
                 </div>
 
-                <div onClick={() => setShowSelector(!showSelector)} className="relative group cursor-pointer">
+                <div
+                  onClick={() => setShowSelector(!showSelector)}
+                  className="relative group cursor-pointer"
+                >
                   <div className="w-9 h-9 md:w-11 md:h-11 rounded-full p-0.5 bg-gradient-to-tr from-[#5D3191] to-[#8DC63F] group-hover:rotate-6 transition-transform">
                     <div className="w-full h-full rounded-full overflow-hidden border-2 border-white bg-white">
-                      <Image src={selectedAvatar.src || selectedAvatar.image || "/16.png"} alt="Avatar" width={44} height={44} className="w-full h-full object-cover" />
+                      <Image
+                        src={
+                          selectedAvatar.src ||
+                          selectedAvatar.image ||
+                          "/engiin1.png"
+                        }
+                        alt="Avatar"
+                        width={44}
+                        height={44}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   </div>
                 </div>
@@ -531,7 +557,10 @@ const HeaderContent = () => {
               <AnimatePresence>
                 {showSelector && (
                   <>
-                    <div className="fixed inset-0 z-[-1]" onClick={() => setShowSelector(false)} />
+                    <div
+                      className="fixed inset-0 z-[-1]"
+                      onClick={() => setShowSelector(false)}
+                    />
                     <motion.div
                       initial={{ opacity: 0, y: 20, scale: 0.95 }}
                       animate={{ opacity: 1, y: 10, scale: 1 }}
@@ -540,16 +569,31 @@ const HeaderContent = () => {
                     >
                       {/* Профайл хэсэг */}
                       <div className="flex flex-col items-center mb-6 pb-4 border-b border-gray-50">
-                        <span className="text-[#5D3191] font-black text-lg">{userNickname}</span>
+                        <span className="text-[#5D3191] font-black text-lg">
+                          {userNickname}
+                        </span>
                         <div className="flex flex-wrap justify-center gap-2 mt-2">
-                          {userGrade && <span className="text-[9px] font-bold bg-green-50 text-[#8DC63F] px-2 py-0.5 rounded-full uppercase">{userGrade} АНГИ</span>}
-                          {userAge && <span className="text-[9px] font-bold bg-purple-50 text-[#5D3191] px-2 py-0.5 rounded-full uppercase">{userAge} НАСТАЙ</span>}
+                          {userGrade && (
+                            <span className="text-[9px] font-bold bg-green-50 text-[#8DC63F] px-2 py-0.5 rounded-full uppercase">
+                              {userGrade} АНГИ
+                            </span>
+                          )}
+                          {userAge && (
+                            <span className="text-[9px] font-bold bg-purple-50 text-[#5D3191] px-2 py-0.5 rounded-full uppercase">
+                              {userAge} НАСТАЙ
+                            </span>
+                          )}
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between mb-4">
-                        <span className="text-[#5D3191] font-black text-[10px] uppercase tracking-widest opacity-40">Миний Баатрууд</span>
-                        <X className="w-4 h-4 text-gray-300 cursor-pointer hover:text-red-400" onClick={() => setShowSelector(false)} />
+                        <span className="text-[#5D3191] font-black text-[10px] uppercase tracking-widest opacity-40">
+                          Миний Баатрууд
+                        </span>
+                        <X
+                          className="w-4 h-4 text-gray-300 cursor-pointer hover:text-red-400"
+                          onClick={() => setShowSelector(false)}
+                        />
                       </div>
 
                       {/* Баатруудын жагсаалт */}
@@ -562,19 +606,43 @@ const HeaderContent = () => {
                               <div
                                 onClick={() => {
                                   if (!isLocked) {
-                                    const selectedHero = { ...av, src: heroSrc };
+                                    const selectedHero = {
+                                      ...av,
+                                      src: heroSrc,
+                                    };
                                     setSelectedAvatar(selectedHero);
-                                    localStorage.setItem("selectedHero", JSON.stringify(selectedHero));
+                                    localStorage.setItem(
+                                      "selectedHero",
+                                      JSON.stringify(selectedHero),
+                                    );
                                     window.dispatchEvent(new Event("storage"));
-                                    fetch("/api/select-hero", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hero: selectedHero }) }).catch(() => {});
+                                    fetch("/api/select-hero", {
+                                      method: "POST",
+                                      headers: {
+                                        "Content-Type": "application/json",
+                                      },
+                                      body: JSON.stringify({
+                                        hero: selectedHero,
+                                      }),
+                                    }).catch(() => {});
                                     setShowSelector(false);
                                   }
                                 }}
                                 className={`aspect-square rounded-xl p-0.5 transition-all ${isLocked ? "opacity-40 grayscale cursor-not-allowed" : "cursor-pointer hover:scale-110"} ${selectedAvatar.id === av.id ? "bg-[#5D3191]" : "bg-gray-50"}`}
                               >
                                 <div className="w-full h-full rounded-lg overflow-hidden border-2 border-white bg-white relative">
-                                  <Image src={heroSrc} width={50} height={50} className="w-full h-full object-cover" alt="Hero" />
-                                  {isLocked && <div className="absolute inset-0 flex items-center justify-center bg-black/10"><Lock className="w-3 h-3 text-white" /></div>}
+                                  <Image
+                                    src={heroSrc}
+                                    width={50}
+                                    height={50}
+                                    className="w-full h-full object-cover"
+                                    alt="Hero"
+                                  />
+                                  {isLocked && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                                      <Lock className="w-3 h-3 text-white" />
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -585,21 +653,31 @@ const HeaderContent = () => {
                       {/* --- Мэдээлэл шинэчлэх хэсэг энд байна --- */}
                       <div className="mt-5 space-y-2">
                         <button
-                          onClick={() => { router.push("/onboarding"); setShowSelector(false); }}
+                          onClick={() => {
+                            router.push("/onboarding");
+                            setShowSelector(false);
+                          }}
                           className="w-full py-3 bg-blue-50 text-blue-600 font-bold text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 rounded-xl hover:bg-blue-100 transition-colors border border-blue-100"
                         >
                           <UserCog className="w-3.5 h-3.5" /> Мэдээлэл засах
                         </button>
-                        
+
                         <button
-                          onClick={() => { router.push("/baatar"); setShowSelector(false); }}
+                          onClick={() => {
+                            router.push("/baatar");
+                            setShowSelector(false);
+                          }}
                           className="w-full py-3 bg-purple-50 text-[#5D3191] font-bold text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 rounded-xl hover:bg-purple-100 transition-colors border border-purple-100"
                         >
-                          <LayoutGrid className="w-3.5 h-3.5" /> Бүх баатрыг харах
+                          <LayoutGrid className="w-3.5 h-3.5" /> Бүх баатрыг
+                          харах
                         </button>
 
                         <button
-                          onClick={() => { signOut(); setShowSelector(false); }}
+                          onClick={() => {
+                            signOut();
+                            setShowSelector(false);
+                          }}
                           className="w-full py-3 bg-red-50 text-red-500 font-bold text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 rounded-xl hover:bg-red-100 transition-colors"
                         >
                           <LogOut className="w-3 h-3" /> Гарах
