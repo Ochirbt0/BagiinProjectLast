@@ -25,7 +25,6 @@ const islandMaps: Record<string, string> = {
   "5": "/5-r aral.png",
 };
 
-const topicIcons = ["🦁", "👨‍🚀", "🍕", "🏫", "🌳", "⚽", "🚗", "🎨"];
 const topicColors = [
   "#FF8E53",
   "#6C63FF",
@@ -36,6 +35,57 @@ const topicColors = [
   "#A78BFA",
   "#F472B6",
 ];
+
+const TOPIC_ICON_RULES: Array<{ icon: string; keywords: string[] }> = [
+  { icon: "👨‍👩‍👧", keywords: ["аав", "ээж", "эмээ", "өвөө", "ах", "дүү", "гэр бүл"] },
+  { icon: "🐄", keywords: ["мал", "сүү"] },
+  { icon: "🧑", keywords: ["хүн"] },
+  { icon: "🍇", keywords: ["үзэм", "жимс", "хоол"] },
+  { icon: "🌲", keywords: ["ой", "мод", "байгаль"] },
+  { icon: "🌦️", keywords: ["цаг агаар", "салхи", "бороо", "өвөл", "цас", "хавар", "зун", "намар", "өглөө", "өдөр", "орой"] },
+  { icon: "🚗", keywords: ["машин"] },
+  { icon: "🚲", keywords: ["дугуй"] },
+  { icon: "📱", keywords: ["гар утас"] },
+  { icon: "🕒", keywords: ["цаг", "цаг барих", "төлөвлөх", "цаг ашиглах", "цаг төлөвлөх"] },
+  { icon: "🎨", keywords: ["өнгө", "зураг", "зурах"] },
+  { icon: "🐾", keywords: ["амьтад"] },
+  { icon: "🎮", keywords: ["тоглоом"] },
+  { icon: "🎅", keywords: ["өвлийн өвгөн"] },
+  { icon: "💼", keywords: ["мэргэжил", "ирээдүйн ажил"] },
+  { icon: "🔷", keywords: ["дөрвөлжин"] },
+  { icon: "🔺", keywords: ["гурвалжин"] },
+  { icon: "📚", keywords: ["хичээл", "сургууль", "сурагч", "мэдлэг"] },
+  { icon: "🧹", keywords: ["цэвэрхэн", "гэрийн ажил"] },
+  { icon: "🍎", keywords: ["эрүүл хоол", "эрүүл мэнд", "эрүүл амьдрал"] },
+  { icon: "⚽", keywords: ["спорт", "гүйх", "үсрэх"] },
+  { icon: "🧑‍🤝‍🧑", keywords: ["найз", "нөхөрлөл", "найзын"] },
+  { icon: "🏆", keywords: ["амжилт", "амжилтын"] },
+  { icon: "🎯", keywords: ["зорилго"] },
+  { icon: "🌍", keywords: ["байгаль хамгаалах", "нийгэм"] },
+  { icon: "✨", keywords: ["мөрөөдөл"] },
+  { icon: "🤝", keywords: ["хүндэтгэл", "туслах", "багаар ажиллах"] },
+  { icon: "📖", keywords: ["ном", "унших"] },
+  { icon: "🎵", keywords: ["дуулах"] },
+  { icon: "💃", keywords: ["бүжиглэх"] },
+  { icon: "😀", keywords: ["инээх"] },
+  { icon: "🧩", keywords: ["сонирхол"] },
+  { icon: "🧠", keywords: ["хөгжүүлэх", "сурч хөгжих", "мэдлэгийн үнэ цэнэ"] },
+  { icon: "🫶", keywords: ["хариуцлага", "сайн иргэн", "зан чанар"] },
+  { icon: "⭐", keywords: ["манлайлах"] },
+];
+
+const getTopicIcon = (title: string, index: number) => {
+  const normalized = String(title || "").toLowerCase().trim();
+  if (!normalized) return "📘";
+
+  const matched = TOPIC_ICON_RULES.find((rule) =>
+    rule.keywords.some((keyword) => normalized.includes(keyword)),
+  );
+
+  if (matched) return matched.icon;
+  const fallbackIcons = ["📘", "📝", "🔤", "🌟", "🎒", "🗺️", "🧒", "📗"];
+  return fallbackIcons[index % fallbackIcons.length];
+};
 
 type TopicCard = {
   id: number;
@@ -79,7 +129,7 @@ export default function TopicsClient() {
         const mapped = (data.topics || []).map((title, index) => ({
           id: index + 1,
           title,
-          icon: topicIcons[index % topicIcons.length],
+          icon: getTopicIcon(title, index),
           color: topicColors[index % topicColors.length],
         }));
 

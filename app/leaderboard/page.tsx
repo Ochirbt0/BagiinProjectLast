@@ -506,6 +506,7 @@ const PodiumHero = ({ player, size, delay }: PodiumHeroProps) => {
       title: string;
       aura: string;
       titleColor: string;
+      aura: string;
     }
   > = {
     1: {

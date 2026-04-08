@@ -79,11 +79,23 @@ export default function DictationClient() {
   );
   const expectedLineCount = sourceSentences.length || 5;
 
-  const normalizeWord = (value: string) =>
-    value
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}]/gu, "")
-      .trim();
+  const normalizeWord = (value: string) => {
+    const lowered = String(value || "").toLowerCase();
+    const glyphFixed = lowered
+      .replace(/a/g, "а")
+      .replace(/e/g, "е")
+      .replace(/o/g, "о")
+      .replace(/p/g, "р")
+      .replace(/c/g, "с")
+      .replace(/x/g, "х")
+      .replace(/y/g, "у")
+      .replace(/k/g, "к")
+      .replace(/b/g, "в")
+      .replace(/m/g, "м")
+      .replace(/h/g, "н")
+      .replace(/t/g, "т");
+    return glyphFixed.replace(/[^\p{L}\p{N}]/gu, "").trim();
+  };
 
   const shuffleWord = (word: string) => {
     if (word.length < 2) return word;
@@ -107,78 +119,6 @@ export default function DictationClient() {
     word: string,
     boards: Record<string, { pool: string[]; slots: Array<string | null> }>,
   ) => normalizeWord((boards[word]?.slots || []).join("")) === word;
-
-  const getWordMismatches = (expected: string[], actual: string[]) => {
-    const m = expected.length;
-    const n = actual.length;
-    const dp: number[][] = Array.from({ length: m + 1 }, () =>
-      Array.from({ length: n + 1 }, () => 0),
-    );
-
-    for (let i = 0; i <= m; i++) dp[i][0] = i;
-    for (let j = 0; j <= n; j++) dp[0][j] = j;
-
-    for (let i = 1; i <= m; i++) {
-      for (let j = 1; j <= n; j++) {
-        if (expected[i - 1] === actual[j - 1]) {
-          dp[i][j] = dp[i - 1][j - 1];
-        } else {
-          dp[i][j] = Math.min(
-            dp[i - 1][j - 1] + 1,
-            dp[i - 1][j] + 1,
-            dp[i][j - 1] + 1,
-          );
-        }
-      }
-    }
-
-    const mismatches: Array<{
-      expectedWord: string;
-      actualWord: string;
-      userIndex: number;
-    }> = [];
-
-    let i = m;
-    let j = n;
-    while (i > 0 || j > 0) {
-      if (
-        i > 0 &&
-        j > 0 &&
-        expected[i - 1] === actual[j - 1] &&
-        dp[i][j] === dp[i - 1][j - 1]
-      ) {
-        i--;
-        j--;
-        continue;
-      }
-
-      if (i > 0 && j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) {
-        mismatches.push({
-          expectedWord: expected[i - 1],
-          actualWord: actual[j - 1],
-          userIndex: j - 1,
-        });
-        i--;
-        j--;
-        continue;
-      }
-
-      if (j > 0 && dp[i][j] === dp[i][j - 1] + 1) {
-        j--;
-        continue;
-      }
-
-      if (i > 0 && dp[i][j] === dp[i - 1][j] + 1) {
-        i--;
-        continue;
-      }
-
-      if (i > 0) i--;
-      if (j > 0) j--;
-    }
-
-    return mismatches.reverse();
-  };
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -402,23 +342,32 @@ export default function DictationClient() {
         userLinesComparable.length,
       );
       for (let lineIndex = 0; lineIndex < lineCount; lineIndex += 1) {
-        const expectedLine = originalLinesComparable[lineIndex].map(
-          (item) => item.normalized,
-        );
-        const actualLine = userLinesComparable[lineIndex].map(
-          (item) => item.normalized,
-        );
-        const lineMismatches = getWordMismatches(expectedLine, actualLine);
+        const expectedLine = originalLinesComparable[lineIndex];
+        const actualLine = userLinesComparable[lineIndex];
+        const positionCount = Math.max(expectedLine.length, actualLine.length);
+        for (let wordIndex = 0; wordIndex < positionCount; wordIndex += 1) {
+          const expectedWord = expectedLine[wordIndex]?.normalized;
+          const actualWord = actualLine[wordIndex]?.normalized;
+          const rawIndex = actualLine[wordIndex]?.rawIndex;
 
-        for (const mismatch of lineMismatches) {
-          const rawIndex =
-            userLinesComparable[lineIndex][mismatch.userIndex]?.rawIndex;
-          if (typeof rawIndex !== "number") continue;
-          if (!targetByRawUserIndex.has(rawIndex)) {
-            targetByRawUserIndex.set(rawIndex, mismatch.expectedWord);
+          if (!actualWord || typeof rawIndex !== "number") {
+            continue;
+          }
+          if (
+            expectedWord &&
+            expectedWord !== actualWord &&
+            !targetByRawUserIndex.has(rawIndex)
+          ) {
+            targetByRawUserIndex.set(rawIndex, expectedWord);
           }
         }
       }
+
+      const incorrectWordSet = new Set(
+        (checked.incorrectWords || [])
+          .map((word) => normalizeWord(String(word || "")))
+          .filter(Boolean),
+      );
 
       const review: Array<{
         value: string;
@@ -426,9 +375,12 @@ export default function DictationClient() {
         targetWord?: string;
       }> = userWordsRaw.map((rawWord, userIndex) => {
         const targetWord = targetByRawUserIndex.get(userIndex);
+        const isMarkedBySpellcheck = incorrectWordSet.has(
+          normalizeWord(rawWord),
+        );
         return {
           value: rawWord,
-          isWrong: Boolean(targetWord),
+          isWrong: Boolean(targetWord) || isMarkedBySpellcheck,
           targetWord,
         };
       });
