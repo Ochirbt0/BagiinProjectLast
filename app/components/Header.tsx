@@ -384,13 +384,69 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useUser, useClerk, SignInButton } from "@clerk/nextjs";
 
-const DEFAULT_AVATARS = [
-  { id: 1, src: "/engiin1.png" },
-  { id: 2, src: "/engiin2.png" },
-  { id: 3, src: "/engiin3.png" },
-  { id: 4, src: "/engiin4.png" },
-  { id: 5, src: "/engiin5.png" },
+type AvatarOption = {
+  id: number;
+  src: string;
+  image?: string;
+  name?: string;
+  isLocked: boolean;
+};
+
+const DEFAULT_AVATARS: AvatarOption[] = [
+  { id: 1, src: "/engiin1.png", isLocked: false },
+  { id: 2, src: "/engiin2.png", isLocked: false },
+  { id: 3, src: "/engiin3.png", isLocked: false },
+  { id: 4, src: "/engiin4.png", isLocked: false },
+  { id: 5, src: "/engiin5.png", isLocked: false },
+  { id: 6, src: "/an1.png", isLocked: true },
+  { id: 7, src: "/an2.png", isLocked: true },
+  { id: 8, src: "/an3.png", isLocked: true },
+  { id: 9, src: "/an4.png", isLocked: true },
+  { id: 10, src: "/an5.png", isLocked: true },
+  { id: 11, src: "/huch1.png", isLocked: true },
+  { id: 12, src: "/huch2.png", isLocked: true },
+  { id: 13, src: "/huch3.png", isLocked: true },
+  { id: 14, src: "/huch4.png", isLocked: true },
+  { id: 15, src: "/huch5.png", isLocked: true },
+  { id: 16, src: "/hovor11.png", isLocked: true },
+  { id: 17, src: "/hovor2.png", isLocked: true },
+  { id: 18, src: "/hovor3.png", isLocked: true },
+  { id: 19, src: "/hovor4.png", isLocked: true },
+  { id: 20, src: "/hovor5.png", isLocked: true },
 ];
+
+type ApiHero = {
+  id: number;
+  src?: string;
+  image?: string;
+  name?: string;
+  isLocked?: boolean;
+};
+
+const getAllowedHeroesCount = (stars: number) => {
+  if (stars >= 300) return 20;
+  if (stars >= 150) return 15;
+  if (stars >= 50) return 10;
+  return 5;
+};
+
+const mergeHeroesWithFallback = (heroes: ApiHero[] | undefined, stars: number): AvatarOption[] => {
+  const heroesById = new Map((heroes || []).map((hero) => [hero.id, hero]));
+  const allowedHeroesCount = getAllowedHeroesCount(stars);
+
+  return DEFAULT_AVATARS.map((baseHero, index) => {
+    const heroFromApi = heroesById.get(baseHero.id);
+    return {
+      ...baseHero,
+      ...heroFromApi,
+      src: heroFromApi?.image || heroFromApi?.src || baseHero.src,
+      isLocked:
+        typeof heroFromApi?.isLocked === "boolean"
+          ? heroFromApi.isLocked
+          : index >= allowedHeroesCount,
+    };
+  });
+};
 
 const HeaderContent = () => {
   const { isSignedIn, user, isLoaded } = useUser();
@@ -400,7 +456,7 @@ const HeaderContent = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [showSelector, setShowSelector] = useState(false);
   const [displayStars, setDisplayStars] = useState(0);
-  const [dynamicHeroes, setDynamicHeroes] = useState<any[]>([]);
+  const [dynamicHeroes, setDynamicHeroes] = useState<AvatarOption[]>(DEFAULT_AVATARS);
   const [selectedAvatar, setSelectedAvatar] = useState(DEFAULT_AVATARS[0]);
 
   const userNickname =
@@ -410,23 +466,24 @@ const HeaderContent = () => {
 
   useEffect(() => {
     const fetchUnlockedHeroes = async () => {
+      const fallbackStars = Number(localStorage.getItem("userStars") || "0");
+
       if (!isSignedIn || !user?.id) {
-        setDynamicHeroes(DEFAULT_AVATARS);
+        setDynamicHeroes(mergeHeroesWithFallback(undefined, fallbackStars));
         return;
       }
+
       try {
         const res = await fetch(`/api/unlock-heroes?userId=${user.id}`);
         if (res.ok) {
           const data = await res.json();
-          setDynamicHeroes(
-            data.heroes && data.heroes.length > 0
-              ? data.heroes
-              : DEFAULT_AVATARS,
-          );
+          const starsForLocking = Number(data?.userStars ?? fallbackStars);
+          setDynamicHeroes(mergeHeroesWithFallback(data?.heroes, starsForLocking));
+          return;
         }
-      } catch (e) {
-        setDynamicHeroes(DEFAULT_AVATARS);
-      }
+      } catch {}
+
+      setDynamicHeroes(mergeHeroesWithFallback(undefined, fallbackStars));
     };
     fetchUnlockedHeroes();
   }, [isSignedIn, user?.id]);
@@ -598,7 +655,7 @@ const HeaderContent = () => {
 
                       {/* Баатруудын жагсаалт */}
                       <div className="grid grid-cols-4 gap-3 max-h-52 overflow-y-auto pr-1 no-scrollbar">
-                        {dynamicHeroes.map((av: any) => {
+                        {dynamicHeroes.map((av) => {
                           const isLocked = av.isLocked;
                           const heroSrc = av.image || av.src;
                           return (

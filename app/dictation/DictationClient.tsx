@@ -38,6 +38,9 @@ export default function DictationClient() {
   const level = levelFromQuery(searchParams.get("level"));
 
   const [sourceSentences, setSourceSentences] = useState<string[]>([]);
+  const [playedSentencesSnapshot, setPlayedSentencesSnapshot] = useState<
+    string[]
+  >([]);
   const [userInput, setUserInput] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -120,6 +123,108 @@ export default function DictationClient() {
     boards: Record<string, { pool: string[]; slots: Array<string | null> }>,
   ) => normalizeWord((boards[word]?.slots || []).join("")) === word;
 
+  type ExpectedWordItem = { normalized: string };
+  type ActualWordItem = { normalized: string; rawIndex: number };
+
+  const buildLineTargetMap = (
+    expectedLine: ExpectedWordItem[],
+    actualLine: ActualWordItem[],
+  ) => {
+    const map = new Map<number, string>();
+    const m = expectedLine.length;
+    const n = actualLine.length;
+    const dp: number[][] = Array.from({ length: m + 1 }, () =>
+      Array.from({ length: n + 1 }, () => 0),
+    );
+
+    for (let i = 0; i <= m; i += 1) dp[i][0] = i;
+    for (let j = 0; j <= n; j += 1) dp[0][j] = j;
+
+    for (let i = 1; i <= m; i += 1) {
+      for (let j = 1; j <= n; j += 1) {
+        if (expectedLine[i - 1]?.normalized === actualLine[j - 1]?.normalized) {
+          dp[i][j] = dp[i - 1][j - 1];
+        } else {
+          dp[i][j] = Math.min(
+            dp[i - 1][j - 1] + 1, // substitution
+            dp[i - 1][j] + 1, // deletion
+            dp[i][j - 1] + 1, // insertion
+          );
+        }
+      }
+    }
+
+    let i = m;
+    let j = n;
+
+    while (i > 0 || j > 0) {
+      const expected = expectedLine[i - 1];
+      const actual = actualLine[j - 1];
+
+      if (
+        i > 0 &&
+        j > 0 &&
+        expected?.normalized === actual?.normalized &&
+        dp[i][j] === dp[i - 1][j - 1]
+      ) {
+        i -= 1;
+        j -= 1;
+        continue;
+      }
+
+      const substitutionCost =
+        i > 0 && j > 0 ? dp[i - 1][j - 1] + 1 : Number.POSITIVE_INFINITY;
+      const deletionCost = i > 0 ? dp[i - 1][j] + 1 : Number.POSITIVE_INFINITY;
+      const insertionCost = j > 0 ? dp[i][j - 1] + 1 : Number.POSITIVE_INFINITY;
+      const currentCost = dp[i][j];
+
+      // Prefer insertion/deletion over substitution to avoid cascading
+      // false mismatches when a word is missing/extra in the middle.
+      if (deletionCost === currentCost && insertionCost === currentCost) {
+        if (dp[i - 1][j] <= dp[i][j - 1]) {
+          i -= 1;
+        } else {
+          j -= 1;
+        }
+        continue;
+      }
+
+      if (deletionCost === currentCost && i > 0) {
+        i -= 1;
+        continue;
+      }
+
+      if (insertionCost === currentCost && j > 0) {
+        j -= 1;
+        continue;
+      }
+
+      if (substitutionCost === currentCost && i > 0 && j > 0) {
+        if (
+          typeof actual?.rawIndex === "number" &&
+          expected?.normalized &&
+          !map.has(actual.rawIndex)
+        ) {
+          map.set(actual.rawIndex, expected.normalized);
+        }
+        i -= 1;
+        j -= 1;
+        continue;
+      }
+
+      if (i > 0 && j > 0) {
+        i -= 1;
+        j -= 1;
+      } else if (i > 0) {
+        i -= 1;
+      } else if (j > 0) {
+        j -= 1;
+      }
+    }
+
+    return map;
+  };
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -134,6 +239,7 @@ export default function DictationClient() {
       setResult(null);
       setUserInput("");
       setSourceSentences([]);
+      setPlayedSentencesSnapshot([]);
       setIsTopicPassed(false);
       setShowAnagram(false);
       setSelectedAnagramWord(null);
@@ -215,6 +321,7 @@ export default function DictationClient() {
   const handlePlay = async () => {
     if (!sourceSentences.length) return;
 
+    setPlayedSentencesSnapshot([...sourceSentences]);
     setIsPlaying(true);
     setError(null);
 
@@ -267,6 +374,11 @@ export default function DictationClient() {
       return;
     }
 
+    if (!playedSentencesSnapshot.length) {
+      setError("Эхлээд Сонсох товчийг дарж 5 өгүүлбэрээ сонсоно уу.");
+      return;
+    }
+
     const typedLines = userInput
       .split("\n")
       .map((line) => line.trim())
@@ -283,9 +395,15 @@ export default function DictationClient() {
     setRequireAnagramHint(null);
 
     try {
+      const referenceSentences =
+        playedSentencesSnapshot.length === sourceSentences.length &&
+        playedSentencesSnapshot.length > 0
+          ? playedSentencesSnapshot
+          : sourceSentences;
+
       const checked = await spellcheck(userInput);
       const scoreData = await submitScore({
-        originalText: sourceSentences.join(" "),
+        originalText: referenceSentences.join(" "),
         userText: userInput,
         errors: checked.errors,
       });
@@ -323,7 +441,7 @@ export default function DictationClient() {
           .filter((item) => Boolean(item.normalized));
       });
 
-      const originalLinesComparable = sourceSentences.map((line) =>
+      const originalLinesComparable = referenceSentences.map((line) =>
         line
           .split(/\s+/)
           .map((w) => String(w || "").trim())
@@ -342,32 +460,15 @@ export default function DictationClient() {
         userLinesComparable.length,
       );
       for (let lineIndex = 0; lineIndex < lineCount; lineIndex += 1) {
-        const expectedLine = originalLinesComparable[lineIndex];
-        const actualLine = userLinesComparable[lineIndex];
-        const positionCount = Math.max(expectedLine.length, actualLine.length);
-        for (let wordIndex = 0; wordIndex < positionCount; wordIndex += 1) {
-          const expectedWord = expectedLine[wordIndex]?.normalized;
-          const actualWord = actualLine[wordIndex]?.normalized;
-          const rawIndex = actualLine[wordIndex]?.rawIndex;
-
-          if (!actualWord || typeof rawIndex !== "number") {
-            continue;
-          }
-          if (
-            expectedWord &&
-            expectedWord !== actualWord &&
-            !targetByRawUserIndex.has(rawIndex)
-          ) {
+        const expectedLine = originalLinesComparable[lineIndex] || [];
+        const actualLine = userLinesComparable[lineIndex] || [];
+        const lineMap = buildLineTargetMap(expectedLine, actualLine);
+        for (const [rawIndex, expectedWord] of lineMap.entries()) {
+          if (!targetByRawUserIndex.has(rawIndex)) {
             targetByRawUserIndex.set(rawIndex, expectedWord);
           }
         }
       }
-
-      const incorrectWordSet = new Set(
-        (checked.incorrectWords || [])
-          .map((word) => normalizeWord(String(word || "")))
-          .filter(Boolean),
-      );
 
       const review: Array<{
         value: string;
@@ -375,12 +476,9 @@ export default function DictationClient() {
         targetWord?: string;
       }> = userWordsRaw.map((rawWord, userIndex) => {
         const targetWord = targetByRawUserIndex.get(userIndex);
-        const isMarkedBySpellcheck = incorrectWordSet.has(
-          normalizeWord(rawWord),
-        );
         return {
           value: rawWord,
-          isWrong: Boolean(targetWord) || isMarkedBySpellcheck,
+          isWrong: Boolean(targetWord),
           targetWord,
         };
       });
@@ -781,9 +879,6 @@ export default function DictationClient() {
                   <p className="text-rose-500 text-sm md:text-base">
                     {requireAnagramHint}
                   </p>
-                )}
-                {result.incorrectWords && result.incorrectWords.length > 0 && (
-                  <p>Алдаатай үг: {result.incorrectWords.join(", ")}</p>
                 )}
                 {result.correctedText && (
                   <p>Зассан: {formatCorrectedText(result.correctedText)}</p>
