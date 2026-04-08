@@ -301,7 +301,6 @@
 
 // export default LeaderboardPage;
 
-
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
@@ -317,7 +316,7 @@ type Player = {
 };
 
 // --- ЗАСВАР: Fallback зураг тодорхойлох ---
-const DEFAULT_AVATAR = "/16.png"; 
+const DEFAULT_AVATAR = "/16.png";
 
 const toPlayer = (
   p: { id: string; name: string; avatarUrl: string | null; score: number },
@@ -506,7 +505,6 @@ const PodiumHero = ({ player, size, delay }: PodiumHeroProps) => {
       title: string;
       aura: string;
       titleColor: string;
-      aura: string;
     }
   > = {
     1: {
