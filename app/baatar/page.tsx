@@ -150,7 +150,7 @@ export default function BaatarPage() {
           <div className="inline-flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-purple-50 shadow-sm">
             <Zap className="w-3 h-3 fill-[#FFD93D] text-[#FFD93D]" />
             <p className="text-[#5D3191] font-black uppercase text-[8px] md:text-[9px] tracking-widest">
-              Өөрийн баатараа сонгоод аялалаа эхлээрэй
+              Өөрийн баатраа сонгоод аялалаа эхлээрэй
             </p>
           </div>
         </div>
