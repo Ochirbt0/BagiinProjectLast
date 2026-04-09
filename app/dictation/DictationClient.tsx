@@ -840,7 +840,7 @@ export default function DictationClient() {
               className="w-full md:w-48 bg-[#5D3191] text-white py-4 rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-3 transition-all disabled:opacity-60"
             >
               {isTopicPassed ? <ChevronLeft size={18} /> : <Send size={18} />}
-              {isTopicPassed ? "БУЦАХ" : isChecking ? "ШАЛГАЖ БАЙНА" : "ИЛГЭЭХ"}
+              {isTopicPassed ? "БУЦАХ" : isChecking ? "ШАЛГАЖ БАЙНА" : "ШАЛГАХ"}
             </motion.button>
           </div>
         </div>

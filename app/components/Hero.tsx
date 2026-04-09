@@ -134,85 +134,91 @@ const Hero = () => {
           </div>
         </motion.div>
       </div>
-      <AnimatePresence>
-        {showTutorial && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowTutorial(false)}
-              className="absolute inset-0 bg-[#5D3191]/40 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ scale: 0.9, y: 20, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.9, y: 20, opacity: 0 }}
-              className="relative w-full max-w-lg bg-white rounded-[30px] md:rounded-[40px] shadow-[0_40px_80px_rgba(0,0,0,0.2)] overflow-hidden"
-            >
-              <div className="bg-[#5D3191] p-6 md:p-8 text-white relative">
-                <button
-                  onClick={() => setShowTutorial(false)}
-                  className="absolute top-5 right-5 hover:rotate-90 transition-transform"
-                >
-                  <X className="w-5 h-5 md:w-6 md:h-6 opacity-60 hover:opacity-100" />
-                </button>
-                <PlayCircle className="w-10 h-10 md:w-12 md:h-12 text-[#8DC63F] mb-4" />
-                <h3 className="text-xl md:text-2xl font-[1000] uppercase tracking-tighter italic">
-                  Хэрхэн тоглох вэ?
-                </h3>
-              </div>
+    <AnimatePresence>
+  {showTutorial && (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+   
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={() => setShowTutorial(false)}
+        className="absolute inset-0 bg-[#5D3191]/60 backdrop-blur-md"
+      />
 
-              <div className="p-6 md:p-8 space-y-5 md:space-y-6">
-                {[
-                  {
-                    step: "1",
-                    text: "Анхааралтай сайн сонсоорой.",
-                    color: "#8DC63F",
-                  },
-                  {
-                    step: "2",
-                    text: "Сонссон үгээ алдаагүй зөв бичээрэй.",
-                    color: "#5D3191",
-                  },
-                  {
-                    step: "3",
-                    text: "Баатар болж одоогоо цуглуулаарай!",
-                    color: "#FBBF24",
-                  },
-                ].map((item, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 + idx * 0.1 }}
-                    className="flex items-center gap-4 group"
-                  >
-                    <div
-                      style={{ backgroundColor: item.color }}
-                      className="w-9 h-9 md:w-10 md:h-10 rounded-[14px] md:rounded-2xl flex items-center justify-center text-white font-black text-base md:text-lg shadow-lg group-hover:scale-110 transition-transform shrink-0"
-                    >
-                      {item.step}
-                    </div>
-                    <p className="text-[#5D3191] font-bold text-base md:text-lg leading-tight text-pretty">
-                      {item.text}
-                    </p>
-                  </motion.div>
-                ))}
+      <motion.div
+        initial={{ scale: 0.9, y: 20, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.9, y: 20, opacity: 0 }}
+        className="relative w-full max-w-2xl bg-white rounded-[35px] shadow-[0_40px_80px_rgba(0,0,0,0.3)]"
+      >
+        <button
+          onClick={() => setShowTutorial(false)}
+          className="absolute -top-3 -right-3 z-[110] bg-[#FBBF24] hover:bg-[#ffca42] text-[#5D3191] p-2 rounded-xl shadow-lg border-4 border-white transition-all hover:scale-110 active:scale-90 group"
+        >
+          <X className="w-6 h-6 stroke-[3px] group-hover:rotate-90 transition-transform duration-300" />
+        </button>
 
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowTutorial(false)}
-                  className="w-full bg-[#8DC63F] text-white py-4 md:py-5 rounded-[18px] md:rounded-[22px] font-black uppercase tracking-widest text-[11px] md:text-xs shadow-[0_4px_0_0_#5e852a] active:shadow-none active:translate-y-1 transition-all mt-4"
-                >
-                  Эхэлье!
-                </motion.button>
-              </div>
-            </motion.div>
+        <div className="overflow-hidden rounded-[35px]">
+      
+          <div className="bg-[#5D3191] p-3">
+            <div className="aspect-video w-full rounded-[25px] overflow-hidden bg-black border-4 border-[#8DC63F]/30 shadow-inner">
+      
+              <iframe
+                src="https://www.youtube.com/embed/xY0eB_6Pks8?autoplay=1&mute=0"
+                className="w-full h-full border-none"
+                title="Tutorial Video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
           </div>
-        )}
-      </AnimatePresence>
+
+          <div className="p-6 md:p-8 space-y-6">
+            <h3 className="text-[#5D3191] text-2xl font-black text-center uppercase tracking-tight">
+              Хэрхэн тоглох вэ?
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { step: "1", text: "Сонсоорой", color: "#8DC63F" },
+                { step: "2", text: "Бичээрэй", color: "#5D3191" },
+                { step: "3", text: "Шалгуулаарай", color: "#FBBF24" },
+              ].map((item, idx) => (
+                <motion.div 
+                  key={idx} 
+                  initial={{ y: 10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.3 + idx * 0.1 }}
+                  className="flex flex-col items-center text-center gap-2"
+                >
+                  <div
+                    style={{ backgroundColor: item.color }}
+                    className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black shadow-[0_4px_0_rgba(0,0,0,0.1)]"
+                  >
+                    {item.step}
+                  </div>
+                  <p className="text-[#5D3191] font-bold text-sm">
+                    {item.text}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowTutorial(false)}
+              className="w-full bg-[#8DC63F] text-white py-4 rounded-[22px] font-black uppercase tracking-widest text-sm shadow-[0_5px_0_0_#5e852a] active:shadow-none active:translate-y-1 transition-all"
+            >
+              Эхэлье!
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )}
+</AnimatePresence>
     </section>
   );
 };
